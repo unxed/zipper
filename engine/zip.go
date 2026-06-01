@@ -26,6 +26,9 @@ func NewZipArchiver(filename, chroot string, opts Options) (Archiver, error) {
 	if opts.Solid {
 		zopts = append(zopts, zip.WithArchiverSolid(true))
 	}
+	if opts.Incremental {
+		zopts = append(zopts, zip.WithArchiverIncremental(true))
+	}
 
 	if opts.Method == "zstd" {
 		zopts = append(zopts, zip.WithArchiverMethod(zip.ZSTD))
@@ -66,6 +69,33 @@ func NewZipExtractor(filename, chroot string, opts Options) (Extractor, error) {
 		zopts = append(zopts, zip.WithExtractorConcurrency(opts.Concurrency))
 	}
 	zopts = append(zopts, zip.WithExtractorXattrs(opts.Xattrs))
+	if opts.KeepOldFiles {
+		zopts = append(zopts, zip.WithExtractorKeepOldFiles(true))
+	}
+	if opts.KeepNewerFiles {
+		zopts = append(zopts, zip.WithExtractorKeepNewerFiles(true))
+	}
+	if opts.KeepBroken {
+		zopts = append(zopts, zip.WithExtractorKeepBroken(true))
+	}
+	if opts.Sparse {
+		zopts = append(zopts, zip.WithExtractorSparse(true))
+	}
+	if opts.Tolerant {
+		zopts = append(zopts, zip.WithExtractorTolerant(true))
+	}
+	if opts.SafeWrites {
+		zopts = append(zopts, zip.WithExtractorSafeWrites(true))
+	}
+	if opts.UnlinkFirst {
+		zopts = append(zopts, zip.WithExtractorUnlinkFirst(true))
+	}
+	if opts.NumericOwner {
+		zopts = append(zopts, zip.WithExtractorNumericOwner(true))
+	}
+	if opts.Incremental {
+		zopts = append(zopts, zip.WithExtractorIncremental(true))
+	}
 
 	e, err := zip.NewExtractor(filename, chroot, zopts...)
 	if err != nil {

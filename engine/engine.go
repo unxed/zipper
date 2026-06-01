@@ -22,5 +22,18 @@ type Options struct {
 	Concurrency int
 	Xattrs      bool
 	Solid       bool
-	Method      string // "zstd", "deflate", "gzip", "store" и т.д.
+	Method      string // "zstd", "deflate", "gzip", "store", "lzma", "bzip2", "xz"
+
+	// Archiver specific
+	Incremental bool
+
+	// Extractor specific
+	KeepOldFiles   bool
+	KeepNewerFiles bool
+	KeepBroken     bool
+	Sparse         bool
+	Tolerant       bool
+	SafeWrites     bool
+	UnlinkFirst    bool
+	NumericOwner   bool
 }

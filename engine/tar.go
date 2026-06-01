@@ -54,6 +54,33 @@ func NewTarExtractor(filename, chroot string, opts Options) (Extractor, error) {
 		topts = append(topts, tar.WithExtractorConcurrency(opts.Concurrency))
 	}
 	topts = append(topts, tar.WithExtractorXattrs(opts.Xattrs))
+	if opts.KeepOldFiles {
+		topts = append(topts, tar.WithExtractorKeepOldFiles(true))
+	}
+	if opts.KeepNewerFiles {
+		topts = append(topts, tar.WithExtractorKeepNewerFiles(true))
+	}
+	if opts.KeepBroken {
+		topts = append(topts, tar.WithExtractorKeepBroken(true))
+	}
+	if opts.Sparse {
+		topts = append(topts, tar.WithExtractorSparse(true))
+	}
+	if opts.Tolerant {
+		topts = append(topts, tar.WithExtractorTolerant(true))
+	}
+	if opts.SafeWrites {
+		topts = append(topts, tar.WithExtractorSafeWrites(true))
+	}
+	if opts.UnlinkFirst {
+		topts = append(topts, tar.WithExtractorUnlinkFirst(true))
+	}
+	if opts.NumericOwner {
+		topts = append(topts, tar.WithExtractorNumericOwner(true))
+	}
+	if opts.Incremental {
+		topts = append(topts, tar.WithExtractorIncremental(true))
+	}
 
 	e, err := tar.NewExtractor(filename, chroot, topts...)
 	if err != nil {

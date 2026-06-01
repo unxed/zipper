@@ -18,10 +18,10 @@ func TestCliCreateAndExtract(t *testing.T) {
 	// Намеренно передаем без расширения, чтобы проверить подстановку дефолтного
 	archivePath := filepath.Join(tmp, "test_cli")
 
-	// Тест создания (команда c)
-	err := run([]string{"zipper", "c", "-C", srcDir, archivePath, "test.txt"})
+	// Тест создания (команда c) через базовый интерфейс (эмуляция бинарника zipper)
+	err := runZipper([]string{"zipper", "c", "-C", srcDir, archivePath, "test.txt"})
 	if err != nil {
-		t.Fatalf("run(c) failed: %v", err)
+		t.Fatalf("runZipper(c) failed: %v", err)
 	}
 
 	// Ищем фактически созданный файл, т.к. к нему приклеилось расширение
@@ -31,10 +31,10 @@ func TestCliCreateAndExtract(t *testing.T) {
 	}
 	actualArchive := matches[0]
 
-	// Тест извлечения (команда x)
-	err = run([]string{"zipper", "x", "-C", dstDir, actualArchive})
+	// Тест извлечения (команда x) через базовый интерфейс
+	err = runZipper([]string{"zipper", "x", "-C", dstDir, actualArchive})
 	if err != nil {
-		t.Fatalf("run(x) failed: %v", err)
+		t.Fatalf("runZipper(x) failed: %v", err)
 	}
 
 	b, err := os.ReadFile(filepath.Join(dstDir, "test.txt"))
@@ -43,5 +43,62 @@ func TestCliCreateAndExtract(t *testing.T) {
 	}
 	if string(b) != "cli data" {
 		t.Errorf("got %q", string(b))
+	}
+}
+
+func TestTarMimicry(t *testing.T) {
+	tmp := t.TempDir()
+	srcFile := filepath.Join(tmp, "test.txt")
+	os.WriteFile(srcFile, []byte("tar mimicry data"), 0644)
+
+	// Меняем рабочую директорию, т.к. эмуляторы работают относительно нее
+	oldWd, _ := os.Getwd()
+	os.Chdir(tmp)
+	defer os.Chdir(oldWd)
+
+	arc := "test.tar.gz"
+	err := runTar([]string{"tar", "-czf", arc, "test.txt"})
+	if err != nil {
+		t.Fatalf("tar create failed: %v", err)
+	}
+
+	os.Remove("test.txt")
+
+	err = runTar([]string{"tar", "-xzf", arc})
+	if err != nil {
+		t.Fatalf("tar extract failed: %v", err)
+	}
+
+	b, _ := os.ReadFile("test.txt")
+	if string(b) != "tar mimicry data" {
+		t.Errorf("content mismatch: got %q", string(b))
+	}
+}
+
+func TestZipMimicry(t *testing.T) {
+	tmp := t.TempDir()
+	srcFile := filepath.Join(tmp, "test.txt")
+	os.WriteFile(srcFile, []byte("zip mimicry data"), 0644)
+
+	oldWd, _ := os.Getwd()
+	os.Chdir(tmp)
+	defer os.Chdir(oldWd)
+
+	arc := "test_zip" // Без расширения
+	err := runZip([]string{"zip", "-r", "-0", arc, "test.txt"})
+	if err != nil {
+		t.Fatalf("zip create failed: %v", err)
+	}
+
+	os.Remove("test.txt")
+
+	err = runUnzip([]string{"unzip", arc + ".zip", "-d", "out"})
+	if err != nil {
+		t.Fatalf("unzip extract failed: %v", err)
+	}
+
+	b, _ := os.ReadFile(filepath.Join("out", "test.txt"))
+	if string(b) != "zip mimicry data" {
+		t.Errorf("content mismatch: got %q", string(b))
 	}
 }
