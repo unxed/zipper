@@ -47,7 +47,7 @@ func run(args []string) error {
 	}
 
 	archivePath := parsedArgs[0]
-	if engine.DetectFormat(archivePath) == "" {
+	if filepath.Ext(archivePath) == "" {
 		archivePath += engine.DefaultFormat()
 	}
 

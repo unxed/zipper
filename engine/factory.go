@@ -1,8 +1,8 @@
 package engine
 
 import (
-	"errors"
-	"runtime"
+	"path/filepath"
+    "runtime"
 	"strings"
 )
 
@@ -14,24 +14,28 @@ func DefaultFormat() string {
 	return ".tar.zst"
 }
 
-// DetectFormat определяет тип движка (zip или tar) на основе имени файла.
+// DetectFormat определяет тип движка (zip, tar или fallback) на основе имени файла.
 func DetectFormat(filename string) string {
 	lower := strings.ToLower(filename)
 	if strings.HasSuffix(lower, ".zip") {
 		return "zip"
 	}
-	if strings.HasSuffix(lower, ".tar") || strings.Contains(lower, ".tar.") || strings.HasSuffix(lower, ".tgz") || strings.HasSuffix(lower, ".txz") {
+	if strings.HasSuffix(lower, ".tar") || strings.Contains(lower, ".tar.") || strings.HasSuffix(lower, ".tgz") || strings.HasSuffix(lower, ".txz") || strings.HasSuffix(lower, ".tbz2") || strings.HasSuffix(lower, ".tzst") {
 		return "tar"
+	}
+	ext := filepath.Ext(lower)
+	if ext == ".gz" || ext == ".bz2" || ext == ".xz" || ext == ".zst" || ext == ".rar" || ext == ".7z" {
+		return "fallback"
 	}
 	return ""
 }
 
 // NewArchiver возвращает соответствующий Archiver на основе имени файла.
 func NewArchiver(filename, chroot string, opts Options) (Archiver, error) {
-	fmt := DetectFormat(filename)
-	if fmt == "zip" {
+	fmtType := DetectFormat(filename)
+	if fmtType == "zip" {
 		return NewZipArchiver(filename, chroot, opts)
-	} else if fmt == "tar" {
+	} else if fmtType == "tar" {
 		if opts.Method == "" {
 			if strings.HasSuffix(filename, ".zst") {
 				opts.Method = "zstd"
@@ -47,16 +51,16 @@ func NewArchiver(filename, chroot string, opts Options) (Archiver, error) {
 		}
 		return NewTarArchiver(filename, chroot, opts)
 	}
-	return nil, errors.New("unsupported archive format")
+	return NewFallbackArchiver(filename, chroot, opts)
 }
 
 // NewExtractor возвращает соответствующий Extractor на основе имени файла.
 func NewExtractor(filename, chroot string, opts Options) (Extractor, error) {
-	fmt := DetectFormat(filename)
-	if fmt == "zip" {
+	fmtType := DetectFormat(filename)
+	if fmtType == "zip" {
 		return NewZipExtractor(filename, chroot, opts)
-	} else if fmt == "tar" {
+	} else if fmtType == "tar" {
 		return NewTarExtractor(filename, chroot, opts)
 	}
-	return nil, errors.New("unsupported archive format")
+	return NewFallbackExtractor(filename, chroot, opts)
 }
