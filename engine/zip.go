@@ -29,6 +29,15 @@ func NewZipArchiver(filename, chroot string, opts Options) (Archiver, error) {
 	if opts.Incremental {
 		zopts = append(zopts, zip.WithArchiverIncremental(true))
 	}
+	if opts.Password != "" {
+		zopts = append(zopts, zip.WithArchiverPassword(opts.Password))
+	}
+	if opts.EncryptCD {
+		zopts = append(zopts, zip.WithArchiverEncryptCD(true))
+	}
+	if opts.SeekChunkSize > 0 {
+		zopts = append(zopts, zip.WithArchiverSeekIndex(opts.SeekChunkSize))
+	}
 
 	if opts.Method == "zstd" {
 		zopts = append(zopts, zip.WithArchiverMethod(zip.ZSTD))
@@ -95,6 +104,9 @@ func NewZipExtractor(filename, chroot string, opts Options) (Extractor, error) {
 	}
 	if opts.Incremental {
 		zopts = append(zopts, zip.WithExtractorIncremental(true))
+	}
+	if opts.Password != "" {
+		zopts = append(zopts, zip.WithExtractorPassword(opts.Password))
 	}
 
 	e, err := zip.NewExtractor(filename, chroot, zopts...)

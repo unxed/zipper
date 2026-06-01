@@ -21,6 +21,13 @@ func runZip(args []string) error {
 		if strings.HasPrefix(arg, "-") {
 			if arg == "-0" {
 				opts.Method = "store"
+			} else if arg == "-e" {
+				opts.EncryptCD = true // Утилита zip обычно просит пароль интерактивно, для теста ставим флаг
+			} else if arg == "-P" {
+				if i+1 < len(args) {
+					opts.Password = args[i+1]
+					i++
+				}
 			}
 			// Все остальные флаги (вроде -r) пока просто игнорируем
 		} else {

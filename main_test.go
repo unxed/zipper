@@ -102,3 +102,31 @@ func TestZipMimicry(t *testing.T) {
 		t.Errorf("content mismatch: got %q", string(b))
 	}
 }
+
+func TestZipMimicry_Password(t *testing.T) {
+	tmp := t.TempDir()
+	srcFile := filepath.Join(tmp, "test.txt")
+	os.WriteFile(srcFile, []byte("protected data"), 0644)
+
+	oldWd, _ := os.Getwd()
+	os.Chdir(tmp)
+	defer os.Chdir(oldWd)
+
+	arc := "protected"
+	err := runZip([]string{"zip", "-P", "pass", arc, "test.txt"})
+	if err != nil {
+		t.Fatalf("zip create failed: %v", err)
+	}
+
+	os.Remove("test.txt")
+
+	err = runUnzip([]string{"unzip", "-P", "pass", arc + ".zip", "-d", "out"})
+	if err != nil {
+		t.Fatalf("unzip extract failed: %v", err)
+	}
+
+	b, _ := os.ReadFile(filepath.Join("out", "test.txt"))
+	if string(b) != "protected data" {
+		t.Errorf("content mismatch: got %q", string(b))
+	}
+}

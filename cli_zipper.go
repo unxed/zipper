@@ -28,12 +28,18 @@ func runZipper(args []string) error {
 		keepOld     bool
 		keepNewer   bool
 		keepBroken  bool
-		sparse      bool
-		tolerant    bool
+		sparse        bool
+		tolerant      bool
+		password      string
+		encryptCD     bool
+		seekChunkSize int
 	)
 
 	fs.StringVar(&outDir, "C", ".", "Change to directory")
 	fs.IntVar(&concurrency, "j", 0, "Concurrency")
+	fs.StringVar(&password, "p", "", "Password for encryption/decryption")
+	fs.BoolVar(&encryptCD, "e", false, "Encrypt Central Directory (CDE)")
+	fs.IntVar(&seekChunkSize, "seek-chunk", 0, "Seek chunk size for solid archives (e.g. 1048576)")
 	fs.BoolVar(&xattrs, "xattrs", true, "Preserve xattrs")
 	fs.BoolVar(&solid, "solid", false, "Use solid compression (zip)")
 	fs.StringVar(&method, "m", "", "Compression method (deflate, zstd, store, etc.)")
@@ -66,9 +72,12 @@ func runZipper(args []string) error {
 		Incremental:    incremental,
 		KeepOldFiles:   keepOld,
 		KeepNewerFiles: keepNewer,
-		KeepBroken:     keepBroken,
-		Sparse:         sparse,
-		Tolerant:       tolerant,
+		KeepBroken:    keepBroken,
+		Sparse:        sparse,
+		Tolerant:      tolerant,
+		Password:      password,
+		EncryptCD:     encryptCD,
+		SeekChunkSize: uint32(seekChunkSize),
 	}
 
 	switch cmd {

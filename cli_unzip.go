@@ -28,6 +28,11 @@ func runUnzip(args []string) error {
 			opts.KeepNewerFiles = false
 		} else if arg == "-n" {
 			opts.KeepOldFiles = true
+		} else if arg == "-P" {
+			if i+1 < len(args) {
+				opts.Password = args[i+1]
+				i++
+			}
 		} else if !strings.HasPrefix(arg, "-") && archivePath == "" {
 			archivePath = arg
 		}

@@ -39,6 +39,43 @@ func TestZipEngine(t *testing.T) {
 	}
 }
 
+func TestZipEngine_Encryption(t *testing.T) {
+	tmp := t.TempDir()
+	src := filepath.Join(tmp, "src")
+	dst := filepath.Join(tmp, "dst")
+	os.MkdirAll(src, 0755)
+	os.WriteFile(filepath.Join(src, "secret.txt"), []byte("super secret data"), 0644)
+
+	arc := filepath.Join(tmp, "enc.zip")
+	opts := Options{
+		Password:  "12345",
+		EncryptCD: true,
+	}
+	a, err := NewArchiver(arc, src, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, _ := os.Stat(filepath.Join(src, "secret.txt"))
+	a.Archive(context.Background(), map[string]os.FileInfo{filepath.Join(src, "secret.txt"): info})
+	a.Close()
+
+	os.MkdirAll(dst, 0755)
+	e, err := NewExtractor(arc, dst, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = e.Extract(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.Close()
+
+	b, _ := os.ReadFile(filepath.Join(dst, "secret.txt"))
+	if string(b) != "super secret data" {
+		t.Errorf("content mismatch")
+	}
+}
+
 func TestTarEngine(t *testing.T) {
 	tmp := t.TempDir()
 	src := filepath.Join(tmp, "src")
