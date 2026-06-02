@@ -1,6 +1,7 @@
 package archive
 
 import (
+    "strings"
 	"context"
 	"io"
 	"io/fs"
