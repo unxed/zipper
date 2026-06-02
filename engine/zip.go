@@ -36,7 +36,7 @@ func NewZipArchiver(filename, chroot string, opts Options) (Archiver, error) {
 		zopts = append(zopts, zip.WithArchiverEncryptCD(true))
 	}
 	if opts.SeekChunkSize > 0 {
-		zopts = append(zopts, zip.WithArchiverSeekIndex(opts.SeekChunkSize))
+		zopts = append(zopts, zip.WithArchiverSeekIndex(opts.SeekChunkSize, opts.SeekContinuous))
 	}
 
 	if opts.Method == "zstd" {

@@ -24,9 +24,10 @@ type Options struct {
 	Solid       bool
 	Method      string // "zstd", "deflate", "gzip", "store", "lzma", "bzip2", "xz"
 
-	Password      string
-	EncryptCD     bool
-	SeekChunkSize uint32
+	Password       string
+	EncryptCD      bool
+	SeekChunkSize  uint32
+	SeekContinuous bool
 
 	// Archiver specific
 	Incremental bool
