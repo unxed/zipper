@@ -1,0 +1,136 @@
+name: Zipper Build & Release
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*.*.*" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, windows, darwin, freebsd, dragonfly, openbsd, netbsd, illumos, solaris]
+        goarch: [amd64, arm64]
+        exclude:
+          - goos: dragonfly
+            goarch: arm64
+          - goos: illumos
+            goarch: arm64
+          - goos: solaris
+            goarch: arm64
+    env:
+      CGO_ENABLED: 0
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.25'
+        cache-dependency-path: zipper/go.sum
+
+    - name: Run Tests
+      if: matrix.goos == 'linux' && matrix.goarch == 'amd64'
+      run: |
+        cd zipper
+        go test -v ./...
+        go test -v ./engine/...
+
+    - name: Build binaries
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+      run: |
+        cd zipper
+        mkdir -p build
+        EXT=""
+        if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
+
+        # Flags for static binary
+        LDFLAGS="-s -w"
+        if [ "$GOOS" = "linux" ]; then LDFLAGS="$LDFLAGS -extldflags '-static'"; fi
+
+        GCFLAGS=""
+        if [ "$GOOS" = "freebsd" ]; then
+          GCFLAGS="-gcflags=github.com/go-webgpu/goffi/internal/fakecgo=-std"
+        fi
+
+        go build $GCFLAGS -ldflags="$LDFLAGS" -o build/zipper$EXT .
+
+    - name: Package
+      run: |
+        cd zipper
+        if [ "${{ matrix.goos }}" = "windows" ]; then
+          (cd build && zip -r ../../zipper-${{ matrix.goos }}-${{ matrix.goarch }}.zip .)
+        else
+          tar -czvf ../zipper-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz -C build .
+        fi
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: zipper-${{ matrix.goos }}-${{ matrix.goarch }}
+        path: zipper-${{ matrix.goos }}-${{ matrix.goarch }}.*
+        retention-days: 7
+
+  release:
+    name: Create Official Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+        merge-multiple: true
+    - name: Publish Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: artifacts/*
+        generate_release_notes: true
+
+  nightly:
+    name: Update Nightly Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set Release Metadata
+      run: |
+        echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+        echo "BUILD_TIME=$(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+        merge-multiple: true
+
+    - name: Update Nightly Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: nightly
+        name: "Zipper Continuous Build (Nightly)"
+        body: |
+          Automated pre-release build of the latest `zipper` tool.
+
+          **Commit:** `${{ env.SHORT_SHA }}`
+          **Built on:** `${{ env.BUILD_TIME }}`
+        prerelease: true
+        files: artifacts/*
