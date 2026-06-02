@@ -27,6 +27,20 @@ A high-fidelity cross-platform console archiver built on top of high-performance
 *   **Resilient Extraction:** Safe atomic writes, sparse blocks (skipping over zero blocks), and tolerant extraction of partially corrupted archives.
 *   **Mimics anything:** Acts as a modern CLI (`zipper`) but changes its behavior dynamically to match `zip`, `unzip`, or `tar` depending on the name of the executable being invoked (e.g., via symlinks).
 
+## Formats coverage / platform specific features
+
+| Feature | `unxed/tar` | `unxed/zip` |
+| :--- | :--- | :--- |
+| **NTFS ACLs** (Win) | `Get/SetFileSecurityW` \| PAX `MSWINDOWS.raw_sd` | `Get/SetFileSecurityW` \| Extra Field `0x4453` |
+| **Alternative Data Streams** (Win) | `Find*StreamW` \| Virtual files (`file:stream`) | `Find*StreamW` \| Virtual files (`file:stream`) |
+| **High-precision Timestamps** (Win/*nix) | `unix.Lutimes` \| PAX float64 UnixNano | `unix.Lutimes` / `Chtimes` \| Extra Fields `0x000a` / `0x5455` |
+| **Symlinks** (Win/*nix) | `os.Symlink` \| TAR Typeflag `2` | `os.Symlink` \| Mode flag + File payload |
+| **Hardlinks** (*nix) | `os.Link` \| TAR Typeflag `1` | `os.Link` \| `Store` method + Extra Field `0x000d` |
+| **Special Files (Devices/FIFOs)** (*nix) | `unix.Mknod` \| TAR Typeflag `3`/`4`/`6` | `unix.Mknod` \| Extra Field `0x000d` |
+| **Owner UID/GID** (*nix) | `os.Lchown` \| TAR header fields | `os.Lchown` \| Extra Field `0x7875` |
+| **Owner/Group Names** (*nix) | `os.Lchown` \| TAR header fields | `os.Lchown` \| Extra Field `0x7817` |
+| **xattrs / POSIX ACLs** (*nix) | `Lget/setxattr`, `Extattr*` \| PAX `SCHILY.xattr` | `Lget/setxattr`, `Extattr*` \| Extra Field `0x7811` |
+
 ## Use as a Go Library
 
 The core archiver engine is designed as a standalone, reusable Go package located under the `./archive` directory. You can import `github.com/unxed/zipper/archive` into your own Go projects to get high-performance, concurrent, and high-fidelity archiving.
