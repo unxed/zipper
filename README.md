@@ -27,6 +27,12 @@ A high-fidelity cross-platform console archiver built on top of high-performance
 *   **Resilient Extraction:** Safe atomic writes, sparse blocks (skipping over zero blocks), and tolerant extraction of partially corrupted archives.
 *   **Mimics anything:** Acts as a modern CLI (`zipper`) but changes its behavior dynamically to match `zip`, `unzip`, or `tar` depending on the name of the executable being invoked (e.g., via symlinks).
 
+## Use as a Go Library
+
+The core archiver engine is designed as a standalone, reusable Go package located under the `./archive` directory. You can import `github.com/unxed/zipper/archive` into your own Go projects to get high-performance, concurrent, and high-fidelity archiving.
+
+For detailed API specifications, interfaces, and code examples, see the [Archive Library Documentation](./archive/README.md).
+
 ## Build and Installation
 
 Ensure you have Go (1.25 or newer) installed:
@@ -82,4 +88,3 @@ copy zipper.exe unzip.exe
     ```bash
     ./unzip -P "mypass" secure_store.zip -d /tmp/output
     ```
-```
