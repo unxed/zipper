@@ -28,6 +28,16 @@ func OpenFS(filename string, opts Options) (FileSystem, error) {
 	return newFallbackFS(filename, opts)
 }
 
+func cleanPath(name string) string {
+	name = strings.ReplaceAll(name, `\`, `/`)
+	name = strings.TrimPrefix(name, "/")
+	name = strings.TrimSuffix(name, "/")
+	if name == "" || name == "." {
+		return "."
+	}
+	return name
+}
+
 type zipFS struct {
 	zr *zip.ReadCloser
 }
@@ -41,15 +51,15 @@ func newZipFS(filename string, opts Options) (FileSystem, error) {
 }
 
 func (z *zipFS) Open(name string) (fs.File, error) {
-	return z.zr.Open(name)
+	return z.zr.Open(cleanPath(name))
 }
 
 func (z *zipFS) ReadDir(name string) ([]fs.DirEntry, error) {
-	return fs.ReadDir(z.zr, name)
+	return fs.ReadDir(z.zr, cleanPath(name))
 }
 
 func (z *zipFS) Stat(name string) (fs.FileInfo, error) {
-	return fs.Stat(z.zr, name)
+	return fs.Stat(z.zr, cleanPath(name))
 }
 
 func (z *zipFS) Close() error {
@@ -69,15 +79,15 @@ func newTarFS(filename string, opts Options) (FileSystem, error) {
 }
 
 func (t *tarFS) Open(name string) (fs.File, error) {
-	return t.tfs.Open(name)
+	return t.tfs.Open(cleanPath(name))
 }
 
 func (t *tarFS) ReadDir(name string) ([]fs.DirEntry, error) {
-	return fs.ReadDir(t.tfs, name)
+	return fs.ReadDir(t.tfs, cleanPath(name))
 }
 
 func (t *tarFS) Stat(name string) (fs.FileInfo, error) {
-	return fs.Stat(t.tfs, name)
+	return fs.Stat(t.tfs, cleanPath(name))
 }
 
 func (t *tarFS) Close() error {
@@ -109,15 +119,15 @@ func newFallbackFS(filename string, opts Options) (FileSystem, error) {
 }
 
 func (f *fallbackFS) Open(name string) (fs.File, error) {
-	return f.fsys.Open(name)
+	return f.fsys.Open(cleanPath(name))
 }
 
 func (f *fallbackFS) ReadDir(name string) ([]fs.DirEntry, error) {
-	return fs.ReadDir(f.fsys, name)
+	return fs.ReadDir(f.fsys, cleanPath(name))
 }
 
 func (f *fallbackFS) Stat(name string) (fs.FileInfo, error) {
-	return fs.Stat(f.fsys, name)
+	return fs.Stat(f.fsys, cleanPath(name))
 }
 
 func (f *fallbackFS) Close() error {
