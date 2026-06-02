@@ -3,7 +3,6 @@
 A high-fidelity cross-platform console archiver built on top of high-performance pure-Go compression libraries. It is designed to act as a demonstration app for `unxed/zip` and `unxed/tar` while providing binary mimicry for seamless integration into legacy scripts.
 
 ## Key Features
-*   **Dual Nature:** Acts as a modern CLI (`zipper`) but changes its behavior dynamically to match `zip`, `unzip`, or `tar` depending on the name of the executable being invoked (e.g., via symlinks).
 *   **Highly Concurrent:** Parallel compression and extraction out-of-the-box using GOMAXPROCS concurrency limits.
 *   **Strict Metadata Preservation:** Saves and restores platform-specific attributes including Extended Attributes (xattrs), POSIX ACLs, NTFS Security Descriptors, UID/GID, owner strings, symlinks, and hardlinks.
 *   **WinZip AES & Central Directory Encryption:** Full support for AES-256 encrypted archives and invisible file lists (CDE) without disclosing filenames.
@@ -11,6 +10,7 @@ A high-fidelity cross-platform console archiver built on top of high-performance
 *   **Seekable Solid Access:** Uses seek index maps (`-seek-chunk`, `-seek-continuous`) to jump directly to any block within compressed streams in O(1) time without full decompression.
 *   **Incremental Backups:** Synchronizes changes against a `.zip_dumpdir` manifest, automatically deleting removed files on incremental restore.
 *   **Resilient Extraction:** Safe atomic writes, sparse blocks (skipping over zero blocks), and tolerant extraction of partially corrupted archives.
+*   **Mimics anything:** Acts as a modern CLI (`zipper`) but changes its behavior dynamically to match `zip`, `unzip`, or `tar` depending on the name of the executable being invoked (e.g., via symlinks).
 
 ## Build and Installation
 
