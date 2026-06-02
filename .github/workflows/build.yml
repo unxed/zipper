@@ -35,12 +35,11 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: '1.25'
-        cache-dependency-path: zipper/go.sum
+        cache-dependency-path: go.sum
 
     - name: Run Tests
       if: matrix.goos == 'linux' && matrix.goarch == 'amd64'
       run: |
-        cd zipper
         go test -v ./...
         go test -v ./engine/...
 
@@ -49,7 +48,6 @@ jobs:
         GOOS: ${{ matrix.goos }}
         GOARCH: ${{ matrix.goarch }}
       run: |
-        cd zipper
         mkdir -p build
         EXT=""
         if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
@@ -67,11 +65,10 @@ jobs:
 
     - name: Package
       run: |
-        cd zipper
         if [ "${{ matrix.goos }}" = "windows" ]; then
-          (cd build && zip -r ../../zipper-${{ matrix.goos }}-${{ matrix.goarch }}.zip .)
+          (cd build && zip -r ../zipper-${{ matrix.goos }}-${{ matrix.goarch }}.zip .)
         else
-          tar -czvf ../zipper-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz -C build .
+          tar -czvf zipper-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz -C build .
         fi
 
     - name: Upload Artifact
