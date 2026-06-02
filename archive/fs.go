@@ -72,23 +72,46 @@ type tarFS struct {
 }
 
 func newTarFS(filename string, opts Options) (FileSystem, error) {
+	fmt.Fprintf(os.Stderr, "[ZIPPER-ARCHIVE] newTarFS called for filename: %q, opts.IndexPath: %q\n", filename, opts.IndexPath)
 	tfs, err := tar.NewFS(filename, opts.IndexPath)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[ZIPPER-ARCHIVE] tar.NewFS error: %v\n", err)
 		return nil, err
 	}
+	fmt.Fprintf(os.Stderr, "[ZIPPER-ARCHIVE] tar.NewFS successfully initialized TarFS pointer: %p\n", tfs)
 	return &tarFS{tfs: tfs}, nil
 }
 
 func (t *tarFS) Open(name string) (fs.File, error) {
-	return t.tfs.Open(cleanPath(name))
+	cleaned := cleanPath(name)
+	fmt.Fprintf(os.Stderr, "[ZIPPER-ARCHIVE] tarFS.Open raw: %q, cleaned: %q\n", name, cleaned)
+	f, err := t.tfs.Open(cleaned)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[ZIPPER-ARCHIVE] tarFS.Open error: %v\n", err)
+	}
+	return f, err
 }
 
 func (t *tarFS) ReadDir(name string) ([]fs.DirEntry, error) {
-	return fs.ReadDir(t.tfs, cleanPath(name))
+	cleaned := cleanPath(name)
+	fmt.Fprintf(os.Stderr, "[ZIPPER-ARCHIVE] tarFS.ReadDir raw: %q, cleaned: %q\n", name, cleaned)
+	entries, err := fs.ReadDir(t.tfs, cleaned)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[ZIPPER-ARCHIVE] tarFS.ReadDir error: %v\n", err)
+	} else {
+		fmt.Fprintf(os.Stderr, "[ZIPPER-ARCHIVE] tarFS.ReadDir returned %d entries\n", len(entries))
+	}
+	return entries, err
 }
 
 func (t *tarFS) Stat(name string) (fs.FileInfo, error) {
-	return fs.Stat(t.tfs, cleanPath(name))
+	cleaned := cleanPath(name)
+	fmt.Fprintf(os.Stderr, "[ZIPPER-ARCHIVE] tarFS.Stat raw: %q, cleaned: %q\n", name, cleaned)
+	info, err := fs.Stat(t.tfs, cleaned)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[ZIPPER-ARCHIVE] tarFS.Stat error: %v\n", err)
+	}
+	return info, err
 }
 
 func (t *tarFS) Close() error {
