@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/unxed/zipper/engine"
+	"github.com/unxed/zipper/archive"
 )
 
 // runZip эмулирует поведение традиционной утилиты zip
 func runZip(args []string) error {
-	opts := engine.Options{Xattrs: true}
+	opts := archive.Options{Xattrs: true}
 	var archivePath string
 	var files []string
 
@@ -46,7 +46,7 @@ func runZip(args []string) error {
 		archivePath += ".zip"
 	}
 
-	a, err := engine.NewArchiver(archivePath, ".", opts)
+	a, err := archive.NewArchiver(archivePath, ".", opts)
 	if err != nil {
 		return err
 	}

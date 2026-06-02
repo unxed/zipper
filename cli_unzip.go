@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/unxed/zipper/engine"
+	"github.com/unxed/zipper/archive"
 )
 
 // runUnzip эмулирует поведение традиционной утилиты unzip
 func runUnzip(args []string) error {
-	opts := engine.Options{Xattrs: true}
+	opts := archive.Options{Xattrs: true}
 	var archivePath string
 	outDir := "."
 
@@ -46,7 +46,7 @@ func runUnzip(args []string) error {
 	}
 
 	os.MkdirAll(outDir, 0755)
-	e, err := engine.NewExtractor(archivePath, outDir, opts)
+	e, err := archive.NewExtractor(archivePath, outDir, opts)
 	if err != nil {
 		return err
 	}

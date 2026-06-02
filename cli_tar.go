@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/unxed/zipper/engine"
+	"github.com/unxed/zipper/archive"
 )
 
 // runTar эмулирует поведение традиционной утилиты tar
@@ -18,7 +18,7 @@ func runTar(args []string) error {
 
 	mode := ""
 	archivePath := ""
-	opts := engine.Options{Xattrs: true} // По умолчанию сохраняем расширенные атрибуты
+	opts := archive.Options{Xattrs: true} // По умолчанию сохраняем расширенные атрибуты
 	var files []string
 
 	for i := 1; i < len(args); i++ {
@@ -68,7 +68,7 @@ func runTar(args []string) error {
 	}
 
 	if mode == "c" {
-		a, err := engine.NewArchiver(archivePath, ".", opts)
+		a, err := archive.NewArchiver(archivePath, ".", opts)
 		if err != nil {
 			return err
 		}
@@ -88,7 +88,7 @@ func runTar(args []string) error {
 		}
 		return a.Archive(context.Background(), fMap)
 	} else if mode == "x" {
-		e, err := engine.NewExtractor(archivePath, ".", opts)
+		e, err := archive.NewExtractor(archivePath, ".", opts)
 		if err != nil {
 			return err
 		}

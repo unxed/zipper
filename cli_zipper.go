@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/unxed/zipper/engine"
+	"github.com/unxed/zipper/archive"
 )
 
 func runZipper(args []string) error {
@@ -67,10 +67,10 @@ func runZipper(args []string) error {
 
 	archivePath := parsedArgs[0]
 	if filepath.Ext(archivePath) == "" {
-		archivePath += engine.DefaultFormat()
+		archivePath += archive.DefaultFormat()
 	}
 
-	opts := engine.Options{
+	opts := archive.Options{
 		Concurrency:    concurrency,
 		Xattrs:         xattrs,
 		Solid:          solid,
@@ -100,7 +100,7 @@ func runZipper(args []string) error {
 			return fmt.Errorf("invalid chroot directory: %w", err)
 		}
 
-		a, err := engine.NewArchiver(archivePath, absChroot, opts)
+		a, err := archive.NewArchiver(archivePath, absChroot, opts)
 		if err != nil {
 			return fmt.Errorf("failed to create archiver: %w", err)
 		}
@@ -140,7 +140,7 @@ func runZipper(args []string) error {
 			return fmt.Errorf("failed to create output directory: %w", err)
 		}
 
-		e, err := engine.NewExtractor(archivePath, absOut, opts)
+		e, err := archive.NewExtractor(archivePath, absOut, opts)
 		if err != nil {
 			return fmt.Errorf("failed to create extractor: %w", err)
 		}
