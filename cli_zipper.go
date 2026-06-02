@@ -19,21 +19,23 @@ func runZipper(args []string) error {
 	fs := flag.NewFlagSet(cmd, flag.ContinueOnError)
 
 	var (
-		outDir      string
-		concurrency int
-		xattrs      bool
-		solid       bool
-		method      string
-		incremental bool
-		keepOld     bool
-		keepNewer   bool
-		keepBroken  bool
-		sparse        bool
-		tolerant      bool
+		outDir         string
+		concurrency    int
+		xattrs         bool
+		solid          bool
+		method         string
+		incremental    bool
+		keepOld        bool
+		keepNewer      bool
+		keepBroken     bool
+		sparse         bool
+		tolerant       bool
 		password       string
 		encryptCD      bool
 		seekChunkSize  int
 		seekContinuous bool
+		indexPath      string
+		embeddedIndex  bool
 	)
 
 	fs.StringVar(&outDir, "C", ".", "Change to directory")
@@ -51,6 +53,8 @@ func runZipper(args []string) error {
 	fs.BoolVar(&keepBroken, "keep-broken", false, "Keep broken files")
 	fs.BoolVar(&sparse, "sparse", false, "Sparse extraction")
 	fs.BoolVar(&tolerant, "tolerant", false, "Tolerant extraction (ignore some corruptions)")
+	fs.StringVar(&indexPath, "index", "", "Path to SQLite index file")
+	fs.BoolVar(&embeddedIndex, "embedded-index", false, "Embed index in TAR archive (F4SS)")
 
 	if err := fs.Parse(args[2:]); err != nil {
 		return err
@@ -81,6 +85,8 @@ func runZipper(args []string) error {
 		EncryptCD:      encryptCD,
 		SeekChunkSize:  uint32(seekChunkSize),
 		SeekContinuous: seekContinuous,
+		IndexPath:      indexPath,
+		EmbeddedIdx:    embeddedIndex,
 	}
 
 	switch cmd {

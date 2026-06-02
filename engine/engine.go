@@ -31,6 +31,8 @@ type Options struct {
 
 	// Archiver specific
 	Incremental bool
+	IndexPath   string
+	EmbeddedIdx bool
 
 	// Extractor specific
 	KeepOldFiles   bool

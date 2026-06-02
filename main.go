@@ -98,5 +98,7 @@ func showHelp(base string) {
 		fmt.Println("  -keep-broken   Keep extracted files even if CRC/decryption fails")
 		fmt.Println("  -sparse        Write files as sparse blocks (seeking over zeros)")
 		fmt.Println("  -tolerant      Tolerant mode (skip corrupted files and continue)")
+		fmt.Println("  -index <path>  Path to SQLite index file (tar)")
+		fmt.Println("  -embedded-index Embed index in TAR archive (F4SS)")
 	}
 }

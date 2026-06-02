@@ -107,3 +107,44 @@ func TestTarEngine(t *testing.T) {
 		t.Errorf("expected 'tar data', got %q", string(b))
 	}
 }
+
+func TestTarEngine_EmbeddedIndex(t *testing.T) {
+	tmp := t.TempDir()
+	src := filepath.Join(tmp, "src")
+	dst := filepath.Join(tmp, "dst")
+	os.MkdirAll(src, 0755)
+	os.WriteFile(filepath.Join(src, "test.txt"), []byte("tar embedded index data"), 0644)
+
+	arc := filepath.Join(tmp, "test_embedded.tar.zst")
+	idx := filepath.Join(tmp, "index.sqlite")
+	a, err := NewArchiver(arc, src, Options{
+		Method:      "zstd",
+		IndexPath:   idx,
+		EmbeddedIdx: true,
+		Xattrs:      true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, _ := os.Stat(filepath.Join(src, "test.txt"))
+	err = a.Archive(context.Background(), map[string]os.FileInfo{filepath.Join(src, "test.txt"): info})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.Close()
+
+	os.MkdirAll(dst, 0755)
+	e, err := NewExtractor(arc, dst, Options{Xattrs: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Extract(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	e.Close()
+
+	b, _ := os.ReadFile(filepath.Join(dst, "test.txt"))
+	if string(b) != "tar embedded index data" {
+		t.Errorf("expected 'tar embedded index data', got %q", string(b))
+	}
+}

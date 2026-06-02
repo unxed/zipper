@@ -29,6 +29,13 @@ func NewTarArchiver(filename, chroot string, opts Options) (Archiver, error) {
 		topts = append(topts, tar.WithArchiverMethod(tar.Store))
 	}
 
+	if opts.IndexPath != "" {
+		topts = append(topts, tar.WithArchiverIndex(opts.IndexPath))
+	}
+	if opts.EmbeddedIdx {
+		topts = append(topts, tar.WithArchiverEmbeddedIndex(true))
+	}
+
 	a, err := tar.NewArchiver(filename, chroot, topts...)
 	if err != nil {
 		return nil, err
