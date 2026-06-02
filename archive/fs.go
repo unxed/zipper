@@ -1,12 +1,16 @@
 package archive
 
 import (
-    "fmt"
-    "strings"
 	"context"
+	"database/sql"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
+	"strings"
+	"time"
+
+	_ "modernc.org/sqlite"
 
 	"github.com/mholt/archives"
 	"github.com/unxed/tar"
@@ -20,8 +24,18 @@ type FileSystem interface {
 	io.Closer
 }
 
+func logToFile(format string, args ...any) {
+	f, err := os.OpenFile("/tmp/zipper-archive.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err == nil {
+		defer f.Close()
+		fmt.Fprintf(f, "[%s] "+format+"\n", append([]any{time.Now().Format("15:04:05.000")}, args...)...)
+	}
+}
+
 func OpenFS(filename string, opts Options) (FileSystem, error) {
+	logToFile("OpenFS called for filename: %q, method: %q", filename, opts.Method)
 	fmtType := DetectFormat(filename)
+	logToFile("OpenFS detected format: %q", fmtType)
 	if fmtType == "zip" {
 		return newZipFS(filename, opts)
 	} else if fmtType == "tar" {
@@ -45,23 +59,46 @@ type zipFS struct {
 }
 
 func newZipFS(filename string, opts Options) (FileSystem, error) {
+	logToFile("newZipFS opening filename: %q", filename)
 	zr, err := zip.OpenReaderWithPassword(filename, opts.Password)
 	if err != nil {
+		logToFile("newZipFS open failed: %v", err)
 		return nil, err
 	}
+	logToFile("newZipFS successfully opened")
 	return &zipFS{zr: zr}, nil
 }
 
 func (z *zipFS) Open(name string) (fs.File, error) {
-	return z.zr.Open(cleanPath(name))
+	cleaned := cleanPath(name)
+	logToFile("zipFS.Open name: %q, cleaned: %q", name, cleaned)
+	f, err := z.zr.Open(cleaned)
+	if err != nil {
+		logToFile("zipFS.Open error: %v", err)
+	}
+	return f, err
 }
 
 func (z *zipFS) ReadDir(name string) ([]fs.DirEntry, error) {
-	return fs.ReadDir(z.zr, cleanPath(name))
+	cleaned := cleanPath(name)
+	logToFile("zipFS.ReadDir name: %q, cleaned: %q", name, cleaned)
+	entries, err := fs.ReadDir(z.zr, cleaned)
+	if err != nil {
+		logToFile("zipFS.ReadDir error: %v", err)
+	} else {
+		logToFile("zipFS.ReadDir returned %d entries", len(entries))
+	}
+	return entries, err
 }
 
 func (z *zipFS) Stat(name string) (fs.FileInfo, error) {
-	return fs.Stat(z.zr, cleanPath(name))
+	cleaned := cleanPath(name)
+	logToFile("zipFS.Stat name: %q, cleaned: %q", name, cleaned)
+	info, err := fs.Stat(z.zr, cleaned)
+	if err != nil {
+		logToFile("zipFS.Stat error: %v", err)
+	}
+	return info, err
 }
 
 func (z *zipFS) Close() error {
@@ -73,44 +110,77 @@ type tarFS struct {
 }
 
 func newTarFS(filename string, opts Options) (FileSystem, error) {
-	fmt.Fprintf(os.Stderr, "[ZIPPER-ARCHIVE] newTarFS called for filename: %q, opts.IndexPath: %q\n", filename, opts.IndexPath)
+	logToFile("newTarFS called for filename: %q, opts.IndexPath: %q", filename, opts.IndexPath)
 	tfs, err := tar.NewFS(filename, opts.IndexPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[ZIPPER-ARCHIVE] tar.NewFS error: %v\n", err)
+		logToFile("newTarFS: tar.NewFS failed: %v", err)
 		return nil, err
 	}
-	fmt.Fprintf(os.Stderr, "[ZIPPER-ARCHIVE] tar.NewFS successfully initialized TarFS pointer: %p\n", tfs)
+	logToFile("newTarFS: tar.NewFS successfully initialized TarFS pointer: %p", tfs)
+
+	// Выполним диагностический запрос прямо к БД индексов для замера кол-ва файлов
+	if tfs != nil && tfs.IndexPath != "" {
+		db, errDb := sql.Open("sqlite", tfs.IndexPath)
+		if errDb == nil {
+			defer db.Close()
+			var count int
+			errQuery := db.QueryRow("SELECT COUNT(*) FROM files").Scan(&count)
+			logToFile("newTarFS: DIAGNOSTIC index database file count: %d, queryErr: %v", count, errQuery)
+
+			// Выведем топ-10 записей для сверки структуры путей в БД
+			rows, errRows := db.Query("SELECT path, name, isgenerated FROM files LIMIT 10")
+			if errRows == nil {
+				for rows.Next() {
+					var p, n string
+					var isGen bool
+					rows.Scan(&p, &n, &isGen)
+					logToFile("newTarFS: DIAGNOSTIC DB ROW: path=%q, name=%q, isgenerated=%v", p, n, isGen)
+				}
+				rows.Close()
+			} else {
+				logToFile("newTarFS: DIAGNOSTIC DB rows query failed: %v", errRows)
+			}
+		} else {
+			logToFile("newTarFS: DIAGNOSTIC DB connection failed: %v", errDb)
+		}
+	} else {
+		logToFile("newTarFS: WARNING: tfs.IndexPath is empty, DB query skipped!")
+	}
+
 	return &tarFS{tfs: tfs}, nil
 }
 
 func (t *tarFS) Open(name string) (fs.File, error) {
 	cleaned := cleanPath(name)
-	fmt.Fprintf(os.Stderr, "[ZIPPER-ARCHIVE] tarFS.Open raw: %q, cleaned: %q\n", name, cleaned)
+	logToFile("tarFS.Open name: %q, cleaned: %q", name, cleaned)
 	f, err := t.tfs.Open(cleaned)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[ZIPPER-ARCHIVE] tarFS.Open error: %v\n", err)
+		logToFile("tarFS.Open error: %v", err)
 	}
 	return f, err
 }
 
 func (t *tarFS) ReadDir(name string) ([]fs.DirEntry, error) {
 	cleaned := cleanPath(name)
-	fmt.Fprintf(os.Stderr, "[ZIPPER-ARCHIVE] tarFS.ReadDir raw: %q, cleaned: %q\n", name, cleaned)
+	logToFile("tarFS.ReadDir name: %q, cleaned: %q", name, cleaned)
 	entries, err := fs.ReadDir(t.tfs, cleaned)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[ZIPPER-ARCHIVE] tarFS.ReadDir error: %v\n", err)
+		logToFile("tarFS.ReadDir error: %v", err)
 	} else {
-		fmt.Fprintf(os.Stderr, "[ZIPPER-ARCHIVE] tarFS.ReadDir returned %d entries\n", len(entries))
+		logToFile("tarFS.ReadDir returned %d entries", len(entries))
+		for idx, entry := range entries {
+			logToFile("tarFS.ReadDir ENTRY [%d]: name=%q, isDir=%v", idx, entry.Name(), entry.IsDir())
+		}
 	}
 	return entries, err
 }
 
 func (t *tarFS) Stat(name string) (fs.FileInfo, error) {
 	cleaned := cleanPath(name)
-	fmt.Fprintf(os.Stderr, "[ZIPPER-ARCHIVE] tarFS.Stat raw: %q, cleaned: %q\n", name, cleaned)
+	logToFile("tarFS.Stat name: %q, cleaned: %q", name, cleaned)
 	info, err := fs.Stat(t.tfs, cleaned)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[ZIPPER-ARCHIVE] tarFS.Stat error: %v\n", err)
+		logToFile("tarFS.Stat error: %v", err)
 	}
 	return info, err
 }
