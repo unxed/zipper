@@ -4,8 +4,8 @@ go 1.25.5
 
 require (
 	github.com/mholt/archives v0.1.5
-	github.com/unxed/tar v0.1.27
-	github.com/unxed/zip v0.1.22
+	github.com/unxed/tar v0.1.28
+	github.com/unxed/zip v0.1.23
 )
 
 require (
@@ -46,7 +46,3 @@ require (
 	modernc.org/strutil v1.2.0 // indirect
 	modernc.org/token v1.1.0 // indirect
 )
-
-replace github.com/unxed/tar => ../tar
-
-replace github.com/unxed/zip => ../zip
