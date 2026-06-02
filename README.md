@@ -1,4 +1,19 @@
 # zipper
+### ⚡ Quick Download (Nightly Builds)
+
+| Platform | Format | Link |
+| :--- | :--- | :--- |
+| **Windows** | .zip | [amd64](https://github.com/unxed/zipper/releases/download/nightly/zipper-windows-amd64.zip) / [arm64](https://github.com/unxed/zipper/releases/download/nightly/zipper-windows-arm64.zip) |
+| **macOS** | .tar.gz | [amd64](https://github.com/unxed/zipper/releases/download/nightly/zipper-darwin-amd64.tar.gz) / [arm64](https://github.com/unxed/zipper/releases/download/nightly/zipper-darwin-arm64.tar.gz) |
+| **Linux** | .tar.gz | [amd64](https://github.com/unxed/zipper/releases/download/nightly/zipper-linux-amd64.tar.gz) / [arm64](https://github.com/unxed/zipper/releases/download/nightly/zipper-linux-arm64.tar.gz) |
+| **FreeBSD** | .tar.gz | [amd64](https://github.com/unxed/zipper/releases/download/nightly/zipper-freebsd-amd64.tar.gz) / [arm64](https://github.com/unxed/zipper/releases/download/nightly/zipper-freebsd-arm64.tar.gz) |
+| **DragonflyBSD** | .tar.gz | [amd64](https://github.com/unxed/zipper/releases/download/nightly/zipper-dragonfly-amd64.tar.gz) |
+| **OpenBSD** | .tar.gz | [amd64](https://github.com/unxed/zipper/releases/download/nightly/zipper-openbsd-amd64.tar.gz) / [arm64](https://github.com/unxed/zipper/releases/download/nightly/zipper-openbsd-arm64.tar.gz) |
+| **NetBSD** | .tar.gz | [amd64](https://github.com/unxed/zipper/releases/download/nightly/zipper-netbsd-amd64.tar.gz) / [arm64](https://github.com/unxed/zipper/releases/download/nightly/zipper-netbsd-arm64.tar.gz) |
+| **Illumos** (experimental) | .tar.gz | [amd64](https://github.com/unxed/zipper/releases/download/nightly/zipper-illumos-amd64.tar.gz) |
+| **Solaris** (experimental) | .tar.gz | [amd64](https://github.com/unxed/zipper/releases/download/nightly/zipper-solaris-amd64.tar.gz) |
+
+*These builds are automated and represent the current state of the `main` branch.*
 
 A high-fidelity cross-platform console archiver built on top of high-performance pure-Go compression libraries. It is designed to act as a demonstration app for `unxed/zip` and `unxed/tar` while providing binary mimicry for seamless integration into legacy scripts.
 
