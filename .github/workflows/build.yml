@@ -43,6 +43,8 @@ jobs:
         go test -v ./...
         go test -v ./archive/...
 
+    - name: Install UPX
+      run: sudo apt-get update && sudo apt-get install -y upx-ucl
     - name: Build binaries
       env:
         GOOS: ${{ matrix.goos }}
@@ -62,6 +64,11 @@ jobs:
         fi
 
         go build $GCFLAGS -ldflags="$LDFLAGS" -o build/zipper$EXT .
+            # Сжимаем бинарники только для Linux и Windows
+            # (UPX может ломать бинарники darwin или не поддерживать некоторые BSD/Solaris)
+            if [ "$GOOS" = "linux" ] || [ "$GOOS" = "windows" ]; then
+              upx --best --lzma build/zipper$EXT || echo "UPX failed or unsupported for $GOOS/$GOARCH, skipping..."
+            fi
 
     - name: Package
       run: |
