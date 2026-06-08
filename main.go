@@ -104,5 +104,6 @@ func showHelp(base string) {
 		fmt.Println("  -embedded-index Embed index in TAR archive (F4SS)")
 		fmt.Println("  -torrentzip    Create torrentzip compatible archive (zip)")
 		fmt.Println("  -rr <pct>      Add recovery record (percentage, e.g. 5 for 5%)")
+		fmt.Println("  -v <size>      Volume size (e.g. 10M, 1G) for multi-volume archives")
 	}
 }

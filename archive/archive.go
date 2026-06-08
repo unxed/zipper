@@ -28,6 +28,7 @@ type Options struct {
 	EncryptCD      bool
 	SeekChunkSize  uint32
 	SeekContinuous bool
+	SplitSize      int64
 
 	// Archiver specific
 	Incremental bool

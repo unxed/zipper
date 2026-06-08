@@ -43,6 +43,9 @@ func NewTarArchiver(filename, chroot string, opts Options) (Archiver, error) {
 	if opts.Password != "" {
 		topts = append(topts, tar.WithArchiverPassword(opts.Password))
 	}
+	if opts.SplitSize > 0 {
+		topts = append(topts, tar.WithArchiverSplitSize(opts.SplitSize))
+	}
 
 	a, err := tar.NewArchiver(filename, chroot, topts...)
 	if err != nil {

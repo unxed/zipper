@@ -1,6 +1,7 @@
 package main
 
 import (
+    "strings"
 	"context"
 	"flag"
 	"fmt"
@@ -22,7 +23,8 @@ func runZipper(args []string) error {
 		outDir         string
 		concurrency    int
 		xattrs         bool
-		solid          bool
+		splitSizeStr   string
+        solid          bool
 		method         string
 		incremental    bool
 		keepOld        bool
@@ -74,7 +76,13 @@ func runZipper(args []string) error {
 		archivePath += archive.DefaultFormat()
 	}
 
+	splitSize, err := parseSize(splitSizeStr)
+	if err != nil {
+		return fmt.Errorf("invalid volume size: %v", err)
+	}
+
 	opts := archive.Options{
+		SplitSize:      splitSize,
 		Concurrency:    concurrency,
 		Xattrs:         xattrs,
 		Solid:          solid,
@@ -183,4 +191,29 @@ func runZipper(args []string) error {
 	default:
 		return fmt.Errorf("unknown command: %s", cmd)
 	}
+}
+
+func parseSize(s string) (int64, error) {
+	if s == "" {
+		return 0, nil
+	}
+	s = strings.ToUpper(s)
+	var multiplier int64 = 1
+	switch s[len(s)-1] {
+	case 'K':
+		multiplier = 1024
+		s = s[:len(s)-1]
+	case 'M':
+		multiplier = 1024 * 1024
+		s = s[:len(s)-1]
+	case 'G':
+		multiplier = 1024 * 1024 * 1024
+		s = s[:len(s)-1]
+	}
+	var val int64
+	_, err := fmt.Sscanf(s, "%d", &val)
+	if err != nil {
+		return 0, err
+	}
+	return val * multiplier, nil
 }

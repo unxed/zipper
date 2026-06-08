@@ -3,19 +3,30 @@ package archive
 import (
 	"context"
 	"os"
+    "io"
 
 	"github.com/unxed/zip"
 )
 
 type zipArchiver struct {
-	f        *os.File
+	f        io.WriteCloser
 	a        *zip.Archiver
 	filename string
 	opts     Options
 }
 
 func NewZipArchiver(filename, chroot string, opts Options) (Archiver, error) {
-	f, err := os.Create(filename)
+	var f interface {
+		io.WriteCloser
+		Name() string
+	}
+	var err error
+
+	if opts.SplitSize > 0 {
+		f, err = zip.NewMultiVolumeWriter(filename, opts.SplitSize)
+	} else {
+		f, err = os.Create(filename)
+	}
 	if err != nil {
 		return nil, err
 	}
