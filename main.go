@@ -84,6 +84,7 @@ func showHelp(base string) {
 		fmt.Println("Commands:")
 		fmt.Println("  c              Create archive")
 		fmt.Println("  x              Extract archive")
+		fmt.Println("  repair         Repair archive using embedded recovery record")
 		fmt.Println("\nGlobal Options:")
 		fmt.Println("  -C <dir>       Change to directory <dir>")
 		fmt.Println("  -j <threads>   Set concurrency threads limit")
@@ -102,5 +103,6 @@ func showHelp(base string) {
 		fmt.Println("  -index <path>  Path to SQLite index file (tar)")
 		fmt.Println("  -embedded-index Embed index in TAR archive (F4SS)")
 		fmt.Println("  -torrentzip    Create torrentzip compatible archive (zip)")
+		fmt.Println("  -rr <pct>      Add recovery record (percentage, e.g. 5 for 5%)")
 	}
 }

@@ -37,6 +37,7 @@ func runZipper(args []string) error {
 		indexPath      string
 		embeddedIndex  bool
 		torrentZip     bool
+		recoveryPct    int
 	)
 
 	fs.StringVar(&outDir, "C", ".", "Change to directory")
@@ -57,6 +58,7 @@ func runZipper(args []string) error {
 	fs.StringVar(&indexPath, "index", "", "Path to SQLite index file")
 	fs.BoolVar(&embeddedIndex, "embedded-index", true, "Embed index in TAR archive (F4SS)")
 	fs.BoolVar(&torrentZip, "torrentzip", false, "Create torrentzip compatible archive (zip)")
+	fs.IntVar(&recoveryPct, "rr", 0, "Add recovery record (percentage, e.g. 5 for 5%)")
 
 	if err := fs.Parse(args[2:]); err != nil {
 		return err
@@ -90,6 +92,7 @@ func runZipper(args []string) error {
 		IndexPath:      indexPath,
 		EmbeddedIdx:    embeddedIndex,
 		TorrentZip:     torrentZip,
+		RecoveryPct:    recoveryPct,
 	}
 
 	switch cmd {
@@ -152,6 +155,29 @@ func runZipper(args []string) error {
 		if err := e.Extract(context.Background()); err != nil {
 			return fmt.Errorf("extract error: %w", err)
 		}
+		return nil
+	case "repair":
+		if len(parsedArgs) < 1 {
+			return fmt.Errorf("archive name is required for repair")
+		}
+		repairPath := parsedArgs[0]
+		fmt.Printf("Attempting to repair %s...\n", repairPath)
+		
+		fmtType := archive.DetectFormat(repairPath)
+		if fmtType == "zip" {
+			// Вызов метода ремонта из нашего адаптера, использующего unxed/par2
+			if err := archive.RepairZipArchive(repairPath); err != nil {
+				return fmt.Errorf("repair error: %w", err)
+			}
+		} else if fmtType == "tar" {
+			// Вызов метода ремонта из нашего адаптера, использующего unxed/par2
+			if err := archive.RepairTarArchive(repairPath); err != nil {
+				return fmt.Errorf("repair error: %w", err)
+			}
+		} else {
+			return fmt.Errorf("unsupported archive format for recovery")
+		}
+		fmt.Println("Repair successful!")
 		return nil
 
 	default:

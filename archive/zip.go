@@ -8,8 +8,10 @@ import (
 )
 
 type zipArchiver struct {
-	f *os.File
-	a *zip.Archiver
+	f        *os.File
+	a        *zip.Archiver
+	filename string
+	opts     Options
 }
 
 func NewZipArchiver(filename, chroot string, opts Options) (Archiver, error) {
@@ -50,12 +52,16 @@ func NewZipArchiver(filename, chroot string, opts Options) (Archiver, error) {
 		zopts = append(zopts, zip.WithArchiverMethod(zip.Deflate))
 	}
 
+	if opts.RecoveryPct > 0 {
+		zopts = append(zopts, zip.WithArchiverRecovery(opts.RecoveryPct, f))
+	}
+
 	a, err := zip.NewArchiver(f, chroot, zopts...)
 	if err != nil {
 		f.Close()
 		return nil, err
 	}
-	return &zipArchiver{f: f, a: a}, nil
+	return &zipArchiver{f: f, a: a, filename: filename, opts: opts}, nil
 }
 
 func (z *zipArchiver) Archive(ctx context.Context, files map[string]os.FileInfo) error {

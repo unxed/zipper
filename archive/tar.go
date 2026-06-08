@@ -8,12 +8,19 @@ import (
 )
 
 type tarArchiver struct {
-	a *tar.Archiver
+	a        *tar.Archiver
+	filename string
+	opts     Options
 }
 
 func NewTarArchiver(filename, chroot string, opts Options) (Archiver, error) {
 	var topts []tar.ArchiverOption
 	topts = append(topts, tar.WithArchiverXattrs(opts.Xattrs))
+
+	// Прокидываем процент восстановления в опции через публичную функцию-опцию
+	if opts.RecoveryPct > 0 {
+		topts = append(topts, tar.WithArchiverRecovery(opts.RecoveryPct))
+	}
 
 	if opts.Method == "zstd" {
 		topts = append(topts, tar.WithArchiverMethod(tar.ZSTD))
@@ -41,7 +48,7 @@ func NewTarArchiver(filename, chroot string, opts Options) (Archiver, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &tarArchiver{a: a}, nil
+	return &tarArchiver{a: a, filename: filename, opts: opts}, nil
 }
 
 func (t *tarArchiver) Archive(ctx context.Context, files map[string]os.FileInfo) error {
@@ -49,7 +56,11 @@ func (t *tarArchiver) Archive(ctx context.Context, files map[string]os.FileInfo)
 }
 
 func (t *tarArchiver) Close() error {
-	return t.a.Close()
+	err := t.a.Close()
+	if err == nil && t.opts.RecoveryPct > 0 {
+		err = tar.AppendTarRecoveryRecord(t.filename, t.opts.RecoveryPct)
+	}
+	return err
 }
 
 type tarExtractor struct {

@@ -35,6 +35,8 @@ type Options struct {
 	EmbeddedIdx bool
 
 	// Extractor specific
+	RecoveryPct int
+
 	KeepOldFiles   bool
 	KeepNewerFiles bool
 	KeepBroken     bool
