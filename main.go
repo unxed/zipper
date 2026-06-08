@@ -52,7 +52,7 @@ func showHelp(base string) {
 	switch base {
 	case "tar":
 		fmt.Println("tar - tape archiver emulator")
-		fmt.Println("Usage: tar [ctxzjJvf] <archive> [files...]")
+		fmt.Println("Usage: tar [ctxzjJvfP] <archive> [files...]")
 		fmt.Println("Options:")
 		fmt.Println("  -c             Create archive")
 		fmt.Println("  -x             Extract archive")
@@ -61,6 +61,7 @@ func showHelp(base string) {
 		fmt.Println("  -J             Xz compression")
 		fmt.Println("  --zstd         Zstd compression")
 		fmt.Println("  -f <archive>   Archive file path")
+		fmt.Println("  -P <password>  Password for encryption/decryption")
 	case "zip":
 		fmt.Println("zip - compressor emulator")
 		fmt.Println("Usage: zip [-r] [-0] [-e] [-P password] <archive> [files...]")
@@ -100,5 +101,6 @@ func showHelp(base string) {
 		fmt.Println("  -tolerant      Tolerant mode (skip corrupted files and continue)")
 		fmt.Println("  -index <path>  Path to SQLite index file (tar)")
 		fmt.Println("  -embedded-index Embed index in TAR archive (F4SS)")
+		fmt.Println("  -torrentzip    Create torrentzip compatible archive (zip)")
 	}
 }

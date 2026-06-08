@@ -36,6 +36,7 @@ func runZipper(args []string) error {
 		seekContinuous bool
 		indexPath      string
 		embeddedIndex  bool
+		torrentZip     bool
 	)
 
 	fs.StringVar(&outDir, "C", ".", "Change to directory")
@@ -54,7 +55,8 @@ func runZipper(args []string) error {
 	fs.BoolVar(&sparse, "sparse", false, "Sparse extraction")
 	fs.BoolVar(&tolerant, "tolerant", false, "Tolerant extraction (ignore some corruptions)")
 	fs.StringVar(&indexPath, "index", "", "Path to SQLite index file")
-	fs.BoolVar(&embeddedIndex, "embedded-index", false, "Embed index in TAR archive (F4SS)")
+	fs.BoolVar(&embeddedIndex, "embedded-index", true, "Embed index in TAR archive (F4SS)")
+	fs.BoolVar(&torrentZip, "torrentzip", false, "Create torrentzip compatible archive (zip)")
 
 	if err := fs.Parse(args[2:]); err != nil {
 		return err
@@ -87,6 +89,7 @@ func runZipper(args []string) error {
 		SeekContinuous: seekContinuous,
 		IndexPath:      indexPath,
 		EmbeddedIdx:    embeddedIndex,
+		TorrentZip:     torrentZip,
 	}
 
 	switch cmd {

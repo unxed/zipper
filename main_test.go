@@ -74,6 +74,33 @@ func TestTarMimicry(t *testing.T) {
 		t.Errorf("content mismatch: got %q", string(b))
 	}
 }
+func TestTarMimicry_Password(t *testing.T) {
+	tmp := t.TempDir()
+	srcFile := filepath.Join(tmp, "test.txt")
+	os.WriteFile(srcFile, []byte("protected tar data"), 0644)
+
+	oldWd, _ := os.Getwd()
+	os.Chdir(tmp)
+	defer os.Chdir(oldWd)
+
+	arc := "protected.tar.gz"
+	err := runTar([]string{"tar", "-c", "-z", "-P", "pass", "-f", arc, "test.txt"})
+	if err != nil {
+		t.Fatalf("tar create failed: %v", err)
+	}
+
+	os.Remove("test.txt")
+
+	err = runTar([]string{"tar", "-x", "-z", "-P", "pass", "-f", arc})
+	if err != nil {
+		t.Fatalf("tar extract failed: %v", err)
+	}
+
+	b, _ := os.ReadFile("test.txt")
+	if string(b) != "protected tar data" {
+		t.Errorf("content mismatch: got %q", string(b))
+	}
+}
 
 func TestZipMimicry(t *testing.T) {
 	tmp := t.TempDir()

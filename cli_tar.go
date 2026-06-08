@@ -55,6 +55,16 @@ func runTar(args []string) error {
 						return fmt.Errorf("tar: option requires an argument -- f")
 					}
 					goto nextArg
+				case 'P':
+					if j+1 < len(arg) {
+						opts.Password = arg[j+1:]
+					} else if i+1 < len(args) {
+						opts.Password = args[i+1]
+						i++
+					} else {
+						return fmt.Errorf("tar: option requires an argument -- P")
+					}
+					goto nextArg
 				}
 			}
 		} else {

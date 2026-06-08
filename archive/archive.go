@@ -43,4 +43,6 @@ type Options struct {
 	SafeWrites     bool
 	UnlinkFirst    bool
 	NumericOwner   bool
+
+	TorrentZip     bool
 }

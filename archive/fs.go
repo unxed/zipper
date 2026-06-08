@@ -61,7 +61,11 @@ type tarFS struct {
 }
 
 func newTarFS(filename string, opts Options) (FileSystem, error) {
-	tfs, err := tar.NewFS(filename, opts.IndexPath)
+	var fopts []tar.FSOption
+	if opts.Password != "" {
+		fopts = append(fopts, tar.WithFSPassword(opts.Password))
+	}
+	tfs, err := tar.NewFS(filename, opts.IndexPath, fopts...)
 	if err != nil {
 		return nil, err
 	}

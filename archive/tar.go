@@ -32,8 +32,9 @@ func NewTarArchiver(filename, chroot string, opts Options) (Archiver, error) {
 	if opts.IndexPath != "" {
 		topts = append(topts, tar.WithArchiverIndex(opts.IndexPath))
 	}
-	if opts.EmbeddedIdx {
-		topts = append(topts, tar.WithArchiverEmbeddedIndex(true))
+	topts = append(topts, tar.WithArchiverEmbeddedIndex(opts.EmbeddedIdx))
+	if opts.Password != "" {
+		topts = append(topts, tar.WithArchiverPassword(opts.Password))
 	}
 
 	a, err := tar.NewArchiver(filename, chroot, topts...)
@@ -87,6 +88,9 @@ func NewTarExtractor(filename, chroot string, opts Options) (Extractor, error) {
 	}
 	if opts.Incremental {
 		topts = append(topts, tar.WithExtractorIncremental(true))
+	}
+	if opts.Password != "" {
+		topts = append(topts, tar.WithExtractorPassword(opts.Password))
 	}
 
 	e, err := tar.NewExtractor(filename, chroot, topts...)

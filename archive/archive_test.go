@@ -107,6 +107,41 @@ func TestTarEngine(t *testing.T) {
 		t.Errorf("expected 'tar data', got %q", string(b))
 	}
 }
+func TestTarEngine_Encryption(t *testing.T) {
+	tmp := t.TempDir()
+	src := filepath.Join(tmp, "src")
+	dst := filepath.Join(tmp, "dst")
+	os.MkdirAll(src, 0755)
+	os.WriteFile(filepath.Join(src, "secret.txt"), []byte("tar super secret data"), 0644)
+
+	arc := filepath.Join(tmp, "enc.tar.zst")
+	opts := Options{
+		Password: "tar_password",
+	}
+	a, err := NewArchiver(arc, src, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, _ := os.Stat(filepath.Join(src, "secret.txt"))
+	a.Archive(context.Background(), map[string]os.FileInfo{filepath.Join(src, "secret.txt"): info})
+	a.Close()
+
+	os.MkdirAll(dst, 0755)
+	e, err := NewExtractor(arc, dst, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = e.Extract(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.Close()
+
+	b, _ := os.ReadFile(filepath.Join(dst, "secret.txt"))
+	if string(b) != "tar super secret data" {
+		t.Errorf("content mismatch")
+	}
+}
 
 func TestTarEngine_EmbeddedIndex(t *testing.T) {
 	tmp := t.TempDir()

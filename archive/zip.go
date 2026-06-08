@@ -38,6 +38,9 @@ func NewZipArchiver(filename, chroot string, opts Options) (Archiver, error) {
 	if opts.SeekChunkSize > 0 {
 		zopts = append(zopts, zip.WithArchiverSeekIndex(opts.SeekChunkSize, opts.SeekContinuous))
 	}
+	if opts.TorrentZip {
+		zopts = append(zopts, zip.WithArchiverTorrentZip(true))
+	}
 
 	if opts.Method == "zstd" {
 		zopts = append(zopts, zip.WithArchiverMethod(zip.ZSTD))
