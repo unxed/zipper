@@ -129,6 +129,51 @@ func TestZipMimicry(t *testing.T) {
 		t.Errorf("content mismatch: got %q", string(b))
 	}
 }
+func TestCliMultiVolume(t *testing.T) {
+	tmp := t.TempDir()
+	srcDir := filepath.Join(tmp, "src")
+	dstDir := filepath.Join(tmp, "dst")
+	os.MkdirAll(srcDir, 0755)
+
+	// Создаем тестовые данные размером 50 КБ
+	data := make([]byte, 50*1024)
+	for i := range data {
+		data[i] = byte('A' + (i % 26))
+	}
+	os.WriteFile(filepath.Join(srcDir, "large.txt"), data, 0644)
+
+	archivePath := filepath.Join(tmp, "split_archive.zip")
+
+	// Эмулируем запуск создания многотомного ZIP-архива без сжатия (-m store) с шагом тома в 10 КБ
+	err := runZipper([]string{"zipper", "c", "-C", srcDir, "-v", "10K", "-m", "store", archivePath, "large.txt"})
+	if err != nil {
+		t.Fatalf("failed to create split archive via CLI: %v", err)
+	}
+
+	// Проверяем физическое наличие томов
+	prefix := archivePath[:len(archivePath)-len(".zip")]
+	if _, err := os.Stat(prefix + ".z01"); err != nil {
+		t.Error("missing volume .z01 on disk")
+	}
+	if _, err := os.Stat(archivePath); err != nil {
+		t.Error("missing main volume .zip on disk")
+	}
+
+	// Эмулируем запуск извлечения архива
+	os.MkdirAll(dstDir, 0755)
+	err = runZipper([]string{"zipper", "x", "-C", dstDir, archivePath})
+	if err != nil {
+		t.Fatalf("failed to extract split archive via CLI: %v", err)
+	}
+
+	extractedData, err := os.ReadFile(filepath.Join(dstDir, "large.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(extractedData) != string(data) {
+		t.Error("extracted split archive content mismatch with original data")
+	}
+}
 
 func TestZipMimicry_Password(t *testing.T) {
 	tmp := t.TempDir()
