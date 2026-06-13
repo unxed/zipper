@@ -70,6 +70,9 @@ func NewZipArchiver(filename, chroot string, opts Options) (Archiver, error) {
 	if opts.TorrentZip {
 		zopts = append(zopts, zip.WithArchiverTorrentZip(true))
 	}
+	if opts.Level != 0 {
+		zopts = append(zopts, zip.WithArchiverLevel(opts.Level))
+	}
 	if opts.NoPlatformMetadata {
 		zopts = append(zopts, zip.WithArchiverPlatformMetadata(false))
 	}

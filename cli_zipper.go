@@ -22,6 +22,7 @@ func runZipper(args []string) error {
 	var (
 		outDir         string
 		concurrency    int
+		level          int
 		xattrs         bool
 		splitSizeStr   string
         solid          bool
@@ -51,6 +52,7 @@ func runZipper(args []string) error {
 
 	fs.StringVar(&outDir, "C", ".", "Change to directory")
 	fs.IntVar(&concurrency, "j", 0, "Concurrency")
+	fs.IntVar(&level, "l", 0, "Compression level (1-9)")
 	fs.StringVar(&password, "p", "", "Password for encryption/decryption")
 	fs.BoolVar(&encryptCD, "e", false, "Encrypt Central Directory (CDE)")
 	fs.IntVar(&seekChunkSize, "seek-chunk", 0, "Seek chunk size for solid archives (e.g. 1048576)")
@@ -102,6 +104,7 @@ func runZipper(args []string) error {
 		Xattrs:         xattrs,
 		Solid:          solid,
 		Method:         method,
+		Level:          level,
 		Incremental:    incremental,
 		KeepOldFiles:   keepOld,
 		KeepNewerFiles: keepNewer,

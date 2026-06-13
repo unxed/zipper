@@ -23,6 +23,7 @@ type Options struct {
 	Xattrs      bool
 	Solid       bool
 	Method      string // "zstd", "deflate", "gzip", "store", "lzma", "bzip2", "xz"
+	Level       int    // Compression level (1-9)
 
 	Password       string
 	EncryptCD      bool

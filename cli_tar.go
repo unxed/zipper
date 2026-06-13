@@ -35,6 +35,13 @@ func runTar(args []string) error {
 			mode = "r"
 			continue
 		}
+		if len(arg) == 2 && arg[0] == '-' && arg[1] >= '0' && arg[1] <= '9' {
+			opts.Level = int(arg[1] - '0')
+			if opts.Level == 0 {
+				opts.Method = "store"
+			}
+			continue
+		}
 		if !strings.HasPrefix(arg, "-") && mode == "" {
 			arg = "-" + arg
 		}
