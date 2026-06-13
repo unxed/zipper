@@ -1,6 +1,7 @@
 package archive
 
 import (
+    "path/filepath"
 	"context"
 	"os"
     "io"
@@ -12,6 +13,7 @@ type zipArchiver struct {
 	f        io.WriteCloser
 	a        *zip.Archiver
 	filename string
+	tempFile string
 	opts     Options
 }
 
@@ -22,13 +24,27 @@ func NewZipArchiver(filename, chroot string, opts Options) (Archiver, error) {
 	}
 	var err error
 
-	if opts.SplitSize > 0 {
-		f, err = zip.NewMultiVolumeWriter(filename, opts.SplitSize)
+	targetFilename := filename
+	var tempFilename string
+
+	// If CDE is enabled, write to a temporary file first, then encapsulate
+	if opts.EncryptCD && opts.Password != "" {
+		tf, err := os.CreateTemp(filepath.Dir(filename), "f4crypt-zip-*.tmp")
+		if err != nil {
+			return nil, err
+		}
+		targetFilename = tf.Name()
+		tempFilename = targetFilename
+		f = tf
 	} else {
-		f, err = os.Create(filename)
-	}
-	if err != nil {
-		return nil, err
+		if opts.SplitSize > 0 {
+			f, err = zip.NewMultiVolumeWriter(filename, opts.SplitSize)
+		} else {
+			f, err = os.Create(filename)
+		}
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var zopts []zip.ArchiverOption
@@ -73,9 +89,12 @@ func NewZipArchiver(filename, chroot string, opts Options) (Archiver, error) {
 	a, err := zip.NewArchiver(f, chroot, zopts...)
 	if err != nil {
 		f.Close()
+		if tempFilename != "" {
+			os.Remove(tempFilename)
+		}
 		return nil, err
 	}
-	return &zipArchiver{f: f, a: a, filename: filename, opts: opts}, nil
+	return &zipArchiver{f: f, a: a, filename: filename, tempFile: tempFilename, opts: opts}, nil
 }
 
 func (z *zipArchiver) Archive(ctx context.Context, files map[string]os.FileInfo) error {
@@ -83,8 +102,20 @@ func (z *zipArchiver) Archive(ctx context.Context, files map[string]os.FileInfo)
 }
 
 func (z *zipArchiver) Close() error {
+	if z.opts.Lock {
+		z.a.SetComment("[F4LOCKED] " + z.opts.Password)
+	}
 	err1 := z.a.Close()
 	err2 := z.f.Close()
+
+	if z.tempFile != "" {
+		encErr := zip.EncapsulateF4CryptZip(z.filename, z.tempFile, z.opts.Password)
+		os.Remove(z.tempFile)
+		if encErr != nil {
+			return encErr
+		}
+	}
+
 	if err1 != nil {
 		return err1
 	}

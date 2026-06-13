@@ -46,6 +46,7 @@ func runZipper(args []string) error {
 		maxFileSize    int64
 		maxRatio       int64
 		recoveryExternal bool
+		lock           bool
 	)
 
 	fs.StringVar(&outDir, "C", ".", "Change to directory")
@@ -68,6 +69,7 @@ func runZipper(args []string) error {
 	fs.BoolVar(&torrentZip, "torrentzip", false, "Create torrentzip compatible archive (zip)")
 	fs.IntVar(&recoveryPct, "rr", 0, "Add recovery record (percentage, e.g. 5 for 5%)")
 	fs.BoolVar(&recoveryExternal, "rr-external", false, "Write recovery record to a separate .par2 file instead of embedding it")
+	fs.BoolVar(&lock, "lock", false, "Lock archive to prevent further modifications")
 	fs.StringVar(&splitSizeStr, "v", "", "Volume size (e.g. 100M, 1G) for multi-volume archives")
 	fs.BoolVar(&noPlatformMeta, "no-platform-meta", false, "Do not include local platform metadata in ZIP")
 	fs.BoolVar(&noTimes, "no-times", false, "Do not restore file modification times")
@@ -120,6 +122,7 @@ func runZipper(args []string) error {
 		MaxFileSize:        maxFileSize,
 		MaxRatio:           maxRatio,
 		RecoveryExternal:   recoveryExternal,
+		Lock:               lock,
 	}
 
 	switch cmd {

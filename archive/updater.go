@@ -84,6 +84,8 @@ func newTarUpdater(filename string, opts Options) (Updater, error) {
 	if err != nil {
 		return nil, err
 	}
+	// tar.NewUpdater now automatically detects if the archive is compressed (zst, gz)
+	// and initializes the correct stream append mode using F4SS shadow streams.
 	u, err := tar.NewUpdater(f, tar.APPEND_MODE_OVERWRITE)
 	if err != nil {
 		f.Close()

@@ -54,4 +54,5 @@ type Options struct {
 	MaxFileSize        int64
 	MaxRatio           int64
 	RecoveryExternal   bool
+	Lock               bool
 }
