@@ -79,6 +79,8 @@ func NewZipArchiver(filename, chroot string, opts Options) (Archiver, error) {
 
 	if opts.Method == "zstd" {
 		zopts = append(zopts, zip.WithArchiverMethod(zip.ZSTD))
+	} else if opts.Method == "lzma" {
+		zopts = append(zopts, zip.WithArchiverMethod(zip.LZMA))
 	} else if opts.Method == "store" {
 		zopts = append(zopts, zip.WithArchiverMethod(zip.Store))
 	} else {
