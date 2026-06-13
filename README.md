@@ -41,6 +41,19 @@ A high-fidelity cross-platform console archiver built on top of high-performance
 | **Owner/Group Names** (*nix) | `os.Lchown` \| TAR header fields | `os.Lchown` \| Extra Field `0x7817` ([spec](https://github.com/unxed/zip/blob/main/f4zip.md)) |
 | **xattrs / POSIX ACLs** (*nix) | `Lget/setxattr`, `Extattr*` \| PAX `SCHILY.xattr` | `Lget/setxattr`, `Extattr*` \| Extra Field `0x7811` ([spec](https://github.com/unxed/zip/blob/main/f4zip.md)) |
 
+## Design Philosophy
+
+Historically, developers of major archiving utilities (such as RAR or 7-Zip) have focused on creating proprietary formats and maximizing compression ratios—a priority inherited from the floppy disk era. The `zipper` ecosystem (including `unxed/zip` and `unxed/tar`) takes the opposite approach. Instead of inventing a new archive format, this project focuses on enhancing the features and fidelity of existing, widely-adopted standards (`ZIP` and `TAR`) in a backward-compatible manner.
+
+By aggregating metadata standards from various platforms and tools (including UNIX xattrs, Windows NTFS ACLs, `ratarmount` metadata, and `SOZip` random-access indexes) and implementing them within existing format specifications, we preserve high-fidelity file attributes across different operating systems. For example, Windows ACLs are made functional in both ZIP (via extra field `0x4453`) and TAR (via PAX headers), while UNIX xattrs are brought natively to ZIP archives. Integrating these features required very few custom extensions, as the existing specifications and popular formats already possessed the necessary primitives.
+
+Additionally, this project prioritizes execution speed and random-access capabilities over marginally better compression ratios. To that end, `zipper` defaults to `.tar.zst` (TAR with Zstandard compression) for packaging. In the era of high-speed networks and high-capacity storage, a minor difference in archive size is often negligible compared to the substantial performance advantages offered by Zstandard. Furthermore, `.tar.zst` provides native or easily accessible compatibility across modern platforms: it is supported natively in recent Windows updates and Ubuntu, and on macOS via popular third-party archivers like Keka.
+
+Because the tools are written in Go, they compile to single, zero-dependency binaries. If a system's default extraction utility lacks support for advanced metadata or compression algorithms, a user can quickly obtain the portable `zipper` binary for their platform to extract the archive.
+
+For more details, refer to the technical specifications of our format extensions:
+*   [f4 ZIP Extensions Specification](https://github.com/unxed/zip/blob/main/f4zip.md)
+*   [f4 TAR Extensions Specification](https://github.com/unxed/tar/blob/main/f4tar.md)
 ## Use as a Go Library
 
 The core archiver engine is designed as a standalone, reusable Go package located under the `./archive` directory. You can import `github.com/unxed/zipper/archive` into your own Go projects to get high-performance, concurrent, and high-fidelity archiving.
