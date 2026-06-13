@@ -202,3 +202,46 @@ func TestZipMimicry_Password(t *testing.T) {
 		t.Errorf("content mismatch: got %q", string(b))
 	}
 }
+func TestCliAppendAndDelete(t *testing.T) {
+	tmp := t.TempDir()
+	arc := filepath.Join(tmp, "archive.zip")
+
+	// 1. Create initial zip with "file1.txt"
+	os.WriteFile(filepath.Join(tmp, "file1.txt"), []byte("data1"), 0644)
+	err := runZipper([]string{"zipper", "c", "-C", tmp, arc, "file1.txt"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 2. Append "file2.txt" using "zipper a"
+	os.WriteFile(filepath.Join(tmp, "file2.txt"), []byte("data2"), 0644)
+	err = runZipper([]string{"zipper", "a", "-C", tmp, arc, "file2.txt"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 3. Delete "file1.txt" using "zipper d"
+	err = runZipper([]string{"zipper", "d", "-C", tmp, arc, "file1.txt"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 4. Extract and verify that only "file2.txt" exists
+	dst := filepath.Join(tmp, "dst")
+	os.MkdirAll(dst, 0755)
+	err = runZipper([]string{"zipper", "x", "-C", dst, arc})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := os.Stat(filepath.Join(dst, "file1.txt")); !os.IsNotExist(err) {
+		t.Error("expected file1.txt to be deleted from the archive")
+	}
+	b2, err := os.ReadFile(filepath.Join(dst, "file2.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b2) != "data2" {
+		t.Errorf("got %q, want 'data2'", string(b2))
+	}
+}

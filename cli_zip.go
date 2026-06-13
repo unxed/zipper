@@ -15,6 +15,7 @@ func runZip(args []string) error {
 	opts := archive.Options{Xattrs: true}
 	var archivePath string
 	var files []string
+	deleteMode := false
 
 	for i := 1; i < len(args); i++ {
 		arg := args[i]
@@ -23,6 +24,8 @@ func runZip(args []string) error {
 				opts.Method = "store"
 			} else if arg == "-e" {
 				opts.EncryptCD = true // Утилита zip обычно просит пароль интерактивно, для теста ставим флаг
+			} else if arg == "-d" {
+				deleteMode = true
 			} else if arg == "-P" {
 				if i+1 < len(args) {
 					opts.Password = args[i+1]
@@ -44,6 +47,20 @@ func runZip(args []string) error {
 	}
 	if filepath.Ext(archivePath) == "" {
 		archivePath += ".zip"
+	}
+
+	if deleteMode {
+		u, err := archive.NewUpdater(archivePath, opts)
+		if err != nil {
+			return err
+		}
+		defer u.Close()
+		for _, f := range files {
+			if err := u.Remove(f); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 
 	a, err := archive.NewArchiver(archivePath, ".", opts)

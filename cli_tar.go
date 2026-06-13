@@ -27,6 +27,14 @@ func runTar(args []string) error {
 			opts.Method = "zstd"
 			continue
 		}
+		if arg == "--delete" {
+			mode = "d"
+			continue
+		}
+		if arg == "--append" || arg == "--update" {
+			mode = "r"
+			continue
+		}
 		if !strings.HasPrefix(arg, "-") && mode == "" {
 			arg = "-" + arg
 		}
@@ -38,6 +46,10 @@ func runTar(args []string) error {
 					mode = "c"
 				case 'x':
 					mode = "x"
+				case 'r':
+					mode = "r"
+				case 'd':
+					mode = "d"
 				case 'z':
 					opts.Method = "gzip"
 				case 'j':
@@ -104,6 +116,42 @@ func runTar(args []string) error {
 		}
 		defer e.Close()
 		return e.Extract(context.Background())
+	} else if mode == "r" {
+		u, err := archive.NewUpdater(archivePath, opts)
+		if err != nil {
+			return err
+		}
+		defer u.Close()
+
+		for _, f := range files {
+			fi, err := os.Stat(f)
+			if err != nil {
+				return err
+			}
+			file, err := os.Open(f)
+			if err != nil {
+				return err
+			}
+			err = u.Append(f, fi.Size(), file)
+			file.Close()
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	} else if mode == "d" {
+		u, err := archive.NewUpdater(archivePath, opts)
+		if err != nil {
+			return err
+		}
+		defer u.Close()
+
+		for _, f := range files {
+			if err := u.Remove(f); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
-	return fmt.Errorf("tar: must specify one of -c or -x")
+	return fmt.Errorf("tar: must specify action (-c, -x, -r, or --delete)")
 }

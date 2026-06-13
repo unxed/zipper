@@ -52,10 +52,12 @@ func showHelp(base string) {
 	switch base {
 	case "tar":
 		fmt.Println("tar - tape archiver emulator")
-		fmt.Println("Usage: tar [ctxzjJvfP] <archive> [files...]")
+		fmt.Println("Usage: tar [ctxrzjdvP] <archive> [files...]")
 		fmt.Println("Options:")
 		fmt.Println("  -c             Create archive")
 		fmt.Println("  -x             Extract archive")
+		fmt.Println("  -r             Append files to archive")
+		fmt.Println("  -d, --delete   Delete files from archive")
 		fmt.Println("  -z             Gzip compression")
 		fmt.Println("  -j             Bzip2 compression")
 		fmt.Println("  -J             Xz compression")
@@ -64,11 +66,12 @@ func showHelp(base string) {
 		fmt.Println("  -P <password>  Password for encryption/decryption")
 	case "zip":
 		fmt.Println("zip - compressor emulator")
-		fmt.Println("Usage: zip [-r] [-0] [-e] [-P password] <archive> [files...]")
+		fmt.Println("Usage: zip [-r] [-0] [-e] [-d] [-P password] <archive> [files...]")
 		fmt.Println("Options:")
 		fmt.Println("  -r             Recursive (always enabled)")
 		fmt.Println("  -0             Store only (no compression)")
 		fmt.Println("  -e             Encrypt Central Directory")
+		fmt.Println("  -d             Delete files from archive")
 		fmt.Println("  -P <password>  Set password for AES encryption")
 	case "unzip":
 		fmt.Println("unzip - extractor emulator")
@@ -84,6 +87,8 @@ func showHelp(base string) {
 		fmt.Println("Commands:")
 		fmt.Println("  c              Create archive")
 		fmt.Println("  x              Extract archive")
+		fmt.Println("  a              Append files to archive")
+		fmt.Println("  d              Delete files from archive")
 		fmt.Println("  repair         Repair archive using embedded recovery record")
 		fmt.Println("\nGlobal Options:")
 		fmt.Println("  -C <dir>       Change to directory <dir>")

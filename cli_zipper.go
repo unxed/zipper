@@ -161,6 +161,94 @@ func runZipper(args []string) error {
 		}
 		return nil
 
+	case "a":
+		if len(parsedArgs) < 2 {
+			return fmt.Errorf("please specify files to append")
+		}
+		absChroot, err := filepath.Abs(outDir)
+		if err != nil {
+			return fmt.Errorf("invalid chroot directory: %w", err)
+		}
+		u, err := archive.NewUpdater(archivePath, opts)
+		if err != nil {
+			return fmt.Errorf("failed to initialize updater: %w", err)
+		}
+		defer u.Close()
+
+		for _, target := range parsedArgs[1:] {
+			targetPath := target
+			if !filepath.IsAbs(targetPath) {
+				targetPath = filepath.Join(absChroot, targetPath)
+			}
+			fi, err := os.Stat(targetPath)
+			if err != nil {
+				return fmt.Errorf("failed to read file info for %s: %w", targetPath, err)
+			}
+			f, err := os.Open(targetPath)
+			if err != nil {
+				return fmt.Errorf("failed to open file %s: %w", targetPath, err)
+			}
+			err = u.Append(filepath.ToSlash(target), fi.Size(), f)
+			f.Close()
+			if err != nil {
+				return fmt.Errorf("failed to append %s: %w", target, err)
+			}
+		}
+		return nil
+
+	case "d":
+		if len(parsedArgs) < 2 {
+			return fmt.Errorf("please specify files to delete")
+		}
+		u, err := archive.NewUpdater(archivePath, opts)
+		if err != nil {
+			return fmt.Errorf("failed to initialize updater: %w", err)
+		}
+		defer u.Close()
+
+		for _, target := range parsedArgs[1:] {
+			err = u.Remove(filepath.ToSlash(target))
+			if err != nil {
+				return fmt.Errorf("failed to delete %s: %w", target, err)
+			}
+		}
+		return nil
+		absChroot, err := filepath.Abs(outDir)
+		if err != nil {
+			return fmt.Errorf("invalid chroot directory: %w", err)
+		}
+
+		a, err := archive.NewArchiver(archivePath, absChroot, opts)
+		if err != nil {
+			return fmt.Errorf("failed to create archiver: %w", err)
+		}
+		defer a.Close()
+
+		files := make(map[string]os.FileInfo)
+		for _, target := range parsedArgs[1:] {
+			targetPath := target
+			if !filepath.IsAbs(targetPath) {
+				targetPath = filepath.Join(absChroot, targetPath)
+			}
+			err := filepath.Walk(targetPath, func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+				if path != absChroot {
+					files[path] = info
+				}
+				return nil
+			})
+			if err != nil {
+				return fmt.Errorf("failed to walk %s: %w", target, err)
+			}
+		}
+
+		if err := a.Archive(context.Background(), files); err != nil {
+			return fmt.Errorf("archive error: %w", err)
+		}
+		return nil
+
 	case "x":
 		absOut, err := filepath.Abs(outDir)
 		if err != nil {
