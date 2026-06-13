@@ -41,23 +41,6 @@ A high-fidelity cross-platform console archiver built on top of high-performance
 | **Owner/Group Names** (*nix) | `os.Lchown` \| TAR header fields | `os.Lchown` \| Extra Field `0x7817` ([spec](https://github.com/unxed/zip/blob/main/f4zip.md)) |
 | **xattrs / POSIX ACLs** (*nix) | `Lget/setxattr`, `Extattr*` \| PAX `SCHILY.xattr` | `Lget/setxattr`, `Extattr*` \| Extra Field `0x7811` ([spec](https://github.com/unxed/zip/blob/main/f4zip.md)) |
 
-## Archiver Formats Capability Comparison
-
-The following table outlines how standard archive formats compare to F4-extended formats in terms of cross-platform filesystem metadata preservation, security, and random access:
-
-| Feature / Capability | Standard ZIP | Standard TAR.\*Z | Standard RAR | Standard 7-Zip | F4 ZIP (`unxed/zip`) | F4 TAR.\*Z (`unxed/tar`) |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Solid Archiving** (High ratio) | ❌ | **Yes** | Optional | Optional | **Yes** (Solid ZIP) | **Yes** (Continuous) |
-| **Random Access Seeking** ($O(1)$) | **Yes** (Slow) | ❌ | **Yes** | **Yes** | **Yes** (SOZip/GZIDX) | **Yes** (GZIDX/ZSTD) |
-| **Metadata Encryption** (CD/CDE) | Partial | ❌ | **Yes** | **Yes** | **Yes** (F4Crypt) | **Yes** (F4Crypt) |
-| **POSIX Extended Attributes** (xattrs) | ❌ | **Yes** (PAX) | ❌ | ❌ | **Yes** (EF `0x7811`) | **Yes** (PAX `SCHILY`) |
-| **Windows NTFS ACLs** (Security) | ❌ | ❌ | **Yes** | ❌ | **Yes** (EF `0x4453`) | **Yes** (PAX `raw_sd`) |
-| **Unix Special Files** (Devices/FIFOs) | ❌ | **Yes** | **Yes** | ❌ | **Yes** (EF `0x000d`) | **Yes** |
-| **Owner Numeric UID/GID** | ❌ | **Yes** | **Yes** | ❌ | **Yes** (EF `0x7875`) | **Yes** |
-| **Owner Text Names** (Uname/Gname) | ❌ | **Yes** | ❌ | ❌ | **Yes** (EF `0x7817`) | **Yes** |
-| **Archive Modification Protection** (Lock) | ❌ | ❌ | **Yes** | ❌ | **Yes** (`[F4LOCKED]`) | **Yes** (`properties.txt`) |
-| **Recovery Record** (ECC / PAR2) | ❌ | ❌ | **Yes** | ❌ | **Yes** (embedded/external) | **Yes** (embedded/external) |
-
 ## Design Philosophy
 
 Historically, developers of major archiving utilities (such as RAR or 7-Zip) have focused on creating proprietary formats and maximizing compression ratios—a priority inherited from the floppy disk era. The `zipper` ecosystem (including `unxed/zip` and `unxed/tar`) takes the opposite approach. Instead of inventing a new archive format, this project focuses on enhancing the features and fidelity of existing, widely-adopted standards (`ZIP` and `TAR`) in a backward-compatible manner.
