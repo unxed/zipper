@@ -105,5 +105,10 @@ func showHelp(base string) {
 		fmt.Println("  -torrentzip    Create torrentzip compatible archive (zip)")
 		fmt.Println("  -rr <pct>      Add recovery record (percentage, e.g. 5 for 5%)")
 		fmt.Println("  -v <size>      Volume size (e.g. 10M, 1G) for multi-volume archives")
+		fmt.Println("  -no-platform-meta Do not include local platform metadata in ZIP")
+		fmt.Println("  -no-times      Do not restore file modification times")
+		fmt.Println("  -strip-components <num> Strip <num> leading components from file names")
+		fmt.Println("  -max-file-size <bytes> Max allowed file size for extraction")
+		fmt.Println("  -max-ratio <ratio> Max allowed decompression ratio")
 	}
 }

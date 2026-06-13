@@ -48,4 +48,9 @@ type Options struct {
 	NumericOwner   bool
 
 	TorrentZip     bool
+	NoPlatformMetadata bool
+	NoTimes            bool
+	StripComponents    int
+	MaxFileSize        int64
+	MaxRatio           int64
 }

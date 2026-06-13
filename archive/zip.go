@@ -54,6 +54,9 @@ func NewZipArchiver(filename, chroot string, opts Options) (Archiver, error) {
 	if opts.TorrentZip {
 		zopts = append(zopts, zip.WithArchiverTorrentZip(true))
 	}
+	if opts.NoPlatformMetadata {
+		zopts = append(zopts, zip.WithArchiverPlatformMetadata(false))
+	}
 
 	if opts.Method == "zstd" {
 		zopts = append(zopts, zip.WithArchiverMethod(zip.ZSTD))
@@ -129,6 +132,18 @@ func NewZipExtractor(filename, chroot string, opts Options) (Extractor, error) {
 		zopts = append(zopts, zip.WithExtractorPassword(opts.Password))
 	}
 
+	if opts.NoTimes {
+		zopts = append(zopts, zip.WithExtractorNoTimes(true))
+	}
+	if opts.StripComponents > 0 {
+		zopts = append(zopts, zip.WithExtractorStripComponents(opts.StripComponents))
+	}
+	if opts.MaxFileSize > 0 {
+		zopts = append(zopts, zip.WithExtractorMaxFileSize(opts.MaxFileSize))
+	}
+	if opts.MaxRatio > 0 {
+		zopts = append(zopts, zip.WithExtractorMaxRatio(opts.MaxRatio))
+	}
 	e, err := zip.NewExtractor(filename, chroot, zopts...)
 	if err != nil {
 		return nil, err

@@ -183,3 +183,45 @@ func TestTarEngine_EmbeddedIndex(t *testing.T) {
 		t.Errorf("expected 'tar embedded index data', got %q", string(b))
 	}
 }
+
+func TestZipAndTarAdvancedOptions(t *testing.T) {
+	tmp := t.TempDir()
+	src := filepath.Join(tmp, "src")
+	os.MkdirAll(filepath.Join(src, "lvl1/lvl2"), 0755)
+	os.WriteFile(filepath.Join(src, "lvl1/lvl2/file.txt"), []byte("advanced features test data"), 0644)
+
+	// 1. Test StripComponents & NoTimes
+	arc := filepath.Join(tmp, "advanced.zip")
+	a, err := NewArchiver(arc, src, Options{Method: "deflate", NoPlatformMetadata: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, _ := os.Stat(filepath.Join(src, "lvl1/lvl2/file.txt"))
+	a.Archive(context.Background(), map[string]os.FileInfo{filepath.Join(src, "lvl1/lvl2/file.txt"): info})
+	a.Close()
+
+	dst := filepath.Join(tmp, "dst")
+	os.MkdirAll(dst, 0755)
+
+	e, err := NewExtractor(arc, dst, Options{
+		StripComponents: 1,
+		NoTimes:         true,
+		MaxFileSize:     1024,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Extract(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	e.Close()
+
+	// Expecting "lvl2/file.txt" due to StripComponents: 1
+	b, err := os.ReadFile(filepath.Join(dst, "lvl2", "file.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) != "advanced features test data" {
+		t.Errorf("got %q, want 'advanced features test data'", string(b))
+	}
+}

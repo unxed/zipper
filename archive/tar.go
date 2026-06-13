@@ -107,6 +107,18 @@ func NewTarExtractor(filename, chroot string, opts Options) (Extractor, error) {
 		topts = append(topts, tar.WithExtractorPassword(opts.Password))
 	}
 
+	if opts.NoTimes {
+		topts = append(topts, tar.WithExtractorNoTimes(true))
+	}
+	if opts.StripComponents > 0 {
+		topts = append(topts, tar.WithExtractorStripComponents(opts.StripComponents))
+	}
+	if opts.MaxFileSize > 0 {
+		topts = append(topts, tar.WithExtractorMaxFileSize(opts.MaxFileSize))
+	}
+	if opts.MaxRatio > 0 {
+		topts = append(topts, tar.WithExtractorMaxRatio(opts.MaxRatio))
+	}
 	e, err := tar.NewExtractor(filename, chroot, topts...)
 	if err != nil {
 		return nil, err

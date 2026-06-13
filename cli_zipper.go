@@ -40,6 +40,11 @@ func runZipper(args []string) error {
 		embeddedIndex  bool
 		torrentZip     bool
 		recoveryPct    int
+		noPlatformMeta bool
+		noTimes        bool
+		stripComp      int
+		maxFileSize    int64
+		maxRatio       int64
 	)
 
 	fs.StringVar(&outDir, "C", ".", "Change to directory")
@@ -62,6 +67,11 @@ func runZipper(args []string) error {
 	fs.BoolVar(&torrentZip, "torrentzip", false, "Create torrentzip compatible archive (zip)")
 	fs.IntVar(&recoveryPct, "rr", 0, "Add recovery record (percentage, e.g. 5 for 5%)")
 	fs.StringVar(&splitSizeStr, "v", "", "Volume size (e.g. 100M, 1G) for multi-volume archives")
+	fs.BoolVar(&noPlatformMeta, "no-platform-meta", false, "Do not include local platform metadata in ZIP")
+	fs.BoolVar(&noTimes, "no-times", false, "Do not restore file modification times")
+	fs.IntVar(&stripComp, "strip-components", 0, "Strip number of leading components from file names")
+	fs.Int64Var(&maxFileSize, "max-file-size", 0, "Max allowed file size for extraction")
+	fs.Int64Var(&maxRatio, "max-ratio", 0, "Max allowed decompression ratio")
 
 	if err := fs.Parse(args[2:]); err != nil {
 		return err
@@ -102,6 +112,11 @@ func runZipper(args []string) error {
 		EmbeddedIdx:    embeddedIndex,
 		TorrentZip:     torrentZip,
 		RecoveryPct:    recoveryPct,
+		NoPlatformMetadata: noPlatformMeta,
+		NoTimes:            noTimes,
+		StripComponents:    stripComp,
+		MaxFileSize:        maxFileSize,
+		MaxRatio:           maxRatio,
 	}
 
 	switch cmd {
