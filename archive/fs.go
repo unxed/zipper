@@ -65,7 +65,17 @@ func newTarFS(filename string, opts Options) (FileSystem, error) {
 	if opts.Password != "" {
 		fopts = append(fopts, tar.WithFSPassword(opts.Password))
 	}
-	tfs, err := tar.NewFS(filename, opts.IndexPath, fopts...)
+	indexPath := opts.IndexPath
+	if indexPath == "" {
+		for _, ext := range []string{".index.sqlite", ".index.arcidx", ".arcidx"} {
+			candidate := filename + ext
+			if _, err := os.Stat(candidate); err == nil {
+				indexPath = candidate
+				break
+			}
+		}
+	}
+	tfs, err := tar.NewFS(filename, indexPath, fopts...)
 	if err != nil {
 		return nil, err
 	}

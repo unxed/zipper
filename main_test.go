@@ -245,3 +245,49 @@ func TestCliAppendAndDelete(t *testing.T) {
 		t.Errorf("got %q, want 'data2'", string(b2))
 	}
 }
+func TestCliExternalRecoveryRecord(t *testing.T) {
+	tmp := t.TempDir()
+	arc := filepath.Join(tmp, "archive_ext.zip")
+
+	os.WriteFile(filepath.Join(tmp, "file1.txt"), []byte("data for external par2 recovery testing"), 0644)
+	// Create with external recovery record (-rr 10 -rr-external)
+	err := runZipper([]string{"zipper", "c", "-C", tmp, "-rr", "10", "-rr-external", arc, "file1.txt"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that the external .par2 file was created next to the archive
+	parPath := arc + ".par2"
+	if _, err := os.Stat(parPath); err != nil {
+		t.Errorf("expected external par2 file at %s, but got: %v", parPath, err)
+	}
+
+	// Corrupt the archive slightly
+	raw, _ := os.ReadFile(arc)
+	for i := 40; i < 45 && i < len(raw); i++ {
+		raw[i] = 0x00
+	}
+	os.WriteFile(arc, raw, 0644)
+
+	// Repair using "zipper repair" (should pick up external .par2 file automatically)
+	err = runZipper([]string{"zipper", "repair", arc})
+	if err != nil {
+		t.Fatalf("repair using external par2 failed: %v", err)
+	}
+
+	// Extract and verify integrity
+	dst := filepath.Join(tmp, "dst")
+	os.MkdirAll(dst, 0755)
+	err = runZipper([]string{"zipper", "x", "-C", dst, arc})
+	if err != nil {
+		t.Fatalf("failed to extract repaired archive: %v", err)
+	}
+
+	b, err := os.ReadFile(filepath.Join(dst, "file1.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) != "data for external par2 recovery testing" {
+		t.Errorf("got %q, want 'data for external par2...'", string(b))
+	}
+}

@@ -45,6 +45,7 @@ func runZipper(args []string) error {
 		stripComp      int
 		maxFileSize    int64
 		maxRatio       int64
+		recoveryExternal bool
 	)
 
 	fs.StringVar(&outDir, "C", ".", "Change to directory")
@@ -66,6 +67,7 @@ func runZipper(args []string) error {
 	fs.BoolVar(&embeddedIndex, "embedded-index", true, "Embed index in TAR archive (F4SS)")
 	fs.BoolVar(&torrentZip, "torrentzip", false, "Create torrentzip compatible archive (zip)")
 	fs.IntVar(&recoveryPct, "rr", 0, "Add recovery record (percentage, e.g. 5 for 5%)")
+	fs.BoolVar(&recoveryExternal, "rr-external", false, "Write recovery record to a separate .par2 file instead of embedding it")
 	fs.StringVar(&splitSizeStr, "v", "", "Volume size (e.g. 100M, 1G) for multi-volume archives")
 	fs.BoolVar(&noPlatformMeta, "no-platform-meta", false, "Do not include local platform metadata in ZIP")
 	fs.BoolVar(&noTimes, "no-times", false, "Do not restore file modification times")
@@ -117,6 +119,7 @@ func runZipper(args []string) error {
 		StripComponents:    stripComp,
 		MaxFileSize:        maxFileSize,
 		MaxRatio:           maxRatio,
+		RecoveryExternal:   recoveryExternal,
 	}
 
 	switch cmd {

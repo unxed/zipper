@@ -53,4 +53,5 @@ type Options struct {
 	StripComponents    int
 	MaxFileSize        int64
 	MaxRatio           int64
+	RecoveryExternal   bool
 }

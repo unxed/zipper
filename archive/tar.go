@@ -18,7 +18,7 @@ func NewTarArchiver(filename, chroot string, opts Options) (Archiver, error) {
 	topts = append(topts, tar.WithArchiverXattrs(opts.Xattrs))
 
 	// Прокидываем процент восстановления в опции через публичную функцию-опцию
-	if opts.RecoveryPct > 0 {
+	if opts.RecoveryPct > 0 && !opts.RecoveryExternal {
 		topts = append(topts, tar.WithArchiverRecovery(opts.RecoveryPct))
 	}
 
@@ -61,7 +61,11 @@ func (t *tarArchiver) Archive(ctx context.Context, files map[string]os.FileInfo)
 func (t *tarArchiver) Close() error {
 	err := t.a.Close()
 	if err == nil && t.opts.RecoveryPct > 0 {
-		err = tar.AppendTarRecoveryRecord(t.filename, t.opts.RecoveryPct)
+		if t.opts.RecoveryExternal {
+			err = GenerateExternalPar2(t.filename, t.opts.RecoveryPct)
+		} else {
+			err = tar.AppendTarRecoveryRecord(t.filename, t.opts.RecoveryPct)
+		}
 	}
 	return err
 }

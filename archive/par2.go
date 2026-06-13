@@ -1,6 +1,7 @@
 package archive
 
 import (
+    "path/filepath"
 	"bytes"
 	"encoding/binary"
 	"fmt"
@@ -65,7 +66,13 @@ func RepairZipArchive(filename string) error {
 	}
 
 	if parOffset == 0 {
-		return fmt.Errorf("embedded recovery record (.recovery.par2) not found")
+		externalParPath := filename + ".par2"
+		parData, err := os.ReadFile(externalParPath)
+		if err == nil && len(parData) > 0 {
+			srt := &sectionRepairTarget{target: mvr, size: totalSize}
+			return par2.RepairTargetData(srt, parData)
+		}
+		return fmt.Errorf("embedded recovery record (.recovery.par2) or external .par2 sidecar not found")
 	}
 
 	parData := make([]byte, parSize)
@@ -90,7 +97,13 @@ func RepairTarArchive(filename string) error {
 
 	shadowStart, shadowSize, err := tar.LocateShadowStream(mvr, totalSize, method)
 	if err != nil || shadowSize == 0 {
-		return fmt.Errorf("no embedded F4SS metadata stream found: %w", err)
+		externalParPath := filename + ".par2"
+		parData, err := os.ReadFile(externalParPath)
+		if err == nil && len(parData) > 0 {
+			srt := &sectionRepairTarget{target: mvr, size: totalSize}
+			return par2.RepairTargetData(srt, parData)
+		}
+		return fmt.Errorf("embedded recovery record or external .par2 sidecar not found")
 	}
 
 	shadowBytes := make([]byte, shadowSize)
@@ -118,4 +131,25 @@ func RepairTarArchive(filename string) error {
 
 	srt := &sectionRepairTarget{target: mvr, size: shadowStart}
 	return par2.RepairTargetData(srt, parData)
+}
+
+// GenerateExternalPar2 генерирует внешний файл .par2 рядом с архивом.
+func GenerateExternalPar2(filename string, pct int) error {
+	f, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	fi, err := f.Stat()
+	if err != nil {
+		return err
+	}
+
+	parData, err := par2.GeneratePAR2Stream(f, fi.Size(), filepath.Base(filename), pct)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(filename+".par2", parData, 0644)
 }

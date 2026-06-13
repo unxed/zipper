@@ -66,7 +66,7 @@ func NewZipArchiver(filename, chroot string, opts Options) (Archiver, error) {
 		zopts = append(zopts, zip.WithArchiverMethod(zip.Deflate))
 	}
 
-	if opts.RecoveryPct > 0 {
+	if opts.RecoveryPct > 0 && !opts.RecoveryExternal {
 		zopts = append(zopts, zip.WithArchiverRecovery(opts.RecoveryPct, f))
 	}
 
@@ -88,7 +88,16 @@ func (z *zipArchiver) Close() error {
 	if err1 != nil {
 		return err1
 	}
-	return err2
+	if err2 != nil {
+		return err2
+	}
+	if z.opts.RecoveryPct > 0 && z.opts.RecoveryExternal {
+		err := GenerateExternalPar2(z.filename, z.opts.RecoveryPct)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type zipExtractor struct {
