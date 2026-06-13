@@ -108,6 +108,13 @@ func TestTarUpdater_Remove(t *testing.T) {
 	}
 	u.Close()
 }
+func TestFallbackFS_Invalid(t *testing.T) {
+	// Проверка на передачу пустого имени файла в идентификатор форматов
+	_, err := newFallbackFS("", Options{})
+	if err == nil {
+		t.Error("expected error for empty filename in fallback FS")
+	}
+}
 
 func TestArchiveOptions_DefaultMethod(t *testing.T) {
 	tmp := t.TempDir()
