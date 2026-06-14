@@ -54,6 +54,9 @@ Because the tools are written in Go, they compile to single, zero-dependency bin
 For more details, refer to the technical specifications of our format extensions:
 *   [f4 ZIP Extensions Specification](https://github.com/unxed/zip/blob/main/f4zip.md)
 *   [f4 TAR Extensions Specification](https://github.com/unxed/tar/blob/main/f4tar.md)
+
+An important note regarding development of extension standards: they must ensure backward compatibility and, whenever possible, utilize the standard extension mechanisms of the respective formats—except in cases where those capabilities are exhausted or do not allow the task to be accomplished efficiently.
+
 ## Use as a Go Library
 
 The core archiver engine is designed as a standalone, reusable Go package located under the `./archive` directory. You can import `github.com/unxed/zipper/archive` into your own Go projects to get high-performance, concurrent, and high-fidelity archiving.
