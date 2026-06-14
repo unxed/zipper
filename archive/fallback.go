@@ -92,7 +92,7 @@ type fallbackArchiver struct {
 	filename string
 	chroot   string
 	format   archives.Archiver
-	f        *os.File
+	f        io.WriteCloser
 	files    []archives.FileInfo
 }
 
@@ -100,20 +100,27 @@ func NewFallbackArchiver(filename, chroot string, opts Options) (Archiver, error
 	var format archives.Archiver
 	lower := strings.ToLower(filename)
 
-	// Назначаем базовые архиваторы, если формат не покрыт нашими основными движками
 	if strings.HasSuffix(lower, ".tar.gz") || strings.HasSuffix(lower, ".tgz") {
 		format = archives.CompressedArchive{Compression: archives.Gz{}, Archival: archives.Tar{}}
 	} else if strings.HasSuffix(lower, ".gz") {
 		format = archives.CompressedArchive{Compression: archives.Gz{}}
 	} else if strings.HasSuffix(lower, ".zip") {
 		format = archives.Zip{}
+	} else if filename == "-" {
+		format = archives.CompressedArchive{Compression: archives.Gz{}, Archival: archives.Tar{}}
 	} else {
 		return nil, fmt.Errorf("unsupported fallback creation format for %s", filename)
 	}
 
-	f, err := os.Create(filename)
-	if err != nil {
-		return nil, err
+	var f io.WriteCloser
+	var err error
+	if filename == "-" {
+		f = stdoutWrapper{os.Stdout}
+	} else {
+		f, err = os.Create(filename)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &fallbackArchiver{

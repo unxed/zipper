@@ -1,6 +1,7 @@
 package main
 
 import (
+    "os"
 	"fmt"
 	"strings"
 	"time"
@@ -101,7 +102,7 @@ func startProgressBar(p archive.Progresser, totalBytes, totalEntries int64, op s
 				if len(status) > 100 {
 					status = status[:100]
 				}
-				fmt.Printf("\r%-100s", status)
+				fmt.Fprintf(os.Stderr, "\r%-100s", status)
 
 				lastBytes = bytes
 				lastTime = now

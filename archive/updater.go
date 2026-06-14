@@ -16,6 +16,10 @@ type Updater interface {
 }
 
 func NewUpdater(filename string, opts Options) (Updater, error) {
+	if filename == "-" {
+		return nil, fmt.Errorf("archive: in-place updates not supported for standard input/output")
+	}
+
 	fmtType := DetectFormat(filename)
 	if fmtType == "zip" {
 		return newZipUpdater(filename, opts)

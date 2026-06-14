@@ -18,14 +18,58 @@ type FileSystem interface {
 	io.Closer
 }
 
-func OpenFS(filename string, opts Options) (FileSystem, error) {
-	fmtType := DetectFormat(filename)
-	if fmtType == "zip" {
-		return newZipFS(filename, opts)
-	} else if fmtType == "tar" {
-		return newTarFS(filename, opts)
+type spoolFS struct {
+	FileSystem
+	tempFile string
+}
+
+func (s *spoolFS) Close() error {
+	err := s.FileSystem.Close()
+	if s.tempFile != "" {
+		os.Remove(s.tempFile)
 	}
-	return newFallbackFS(filename, opts)
+	return err
+}
+
+func OpenFS(filename string, opts Options) (FileSystem, error) {
+	var tempFile string
+	originalFilename := filename
+
+	if filename == "-" {
+		var err error
+		tempFile, err = SpoolStdin()
+		if err != nil {
+			return nil, err
+		}
+		filename = tempFile
+	}
+
+	fmtType := DetectFormat(originalFilename)
+	if fmtType == "" && tempFile != "" {
+		fmtType = DetectFormat(tempFile)
+	}
+
+	var fsys FileSystem
+	var err error
+	if fmtType == "zip" {
+		fsys, err = newZipFS(filename, opts)
+	} else if fmtType == "tar" {
+		fsys, err = newTarFS(filename, opts)
+	} else {
+		fsys, err = newFallbackFS(filename, opts)
+	}
+
+	if err != nil {
+		if tempFile != "" {
+			os.Remove(tempFile)
+		}
+		return nil, err
+	}
+
+	if tempFile != "" {
+		return &spoolFS{FileSystem: fsys, tempFile: tempFile}, nil
+	}
+	return fsys, nil
 }
 
 type zipFS struct {

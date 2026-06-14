@@ -1,6 +1,7 @@
 package main
 
 import (
+    "os"
 	"testing"
 )
 
@@ -63,9 +64,16 @@ func TestCli_ParserEdges(t *testing.T) {
 		t.Errorf("got %d, want 1GB", v)
 	}
 
-	// Проверяем, что хелпы не паникуют
+	// Проверяем, что хелпы не паникуют, перехватывая их вывод для чистоты логов
+	oldStdout := os.Stdout
+	_, w, _ := os.Pipe()
+	os.Stdout = w
+
 	showHelp("tar")
 	showHelp("zip")
 	showHelp("unzip")
 	showHelp("zipper")
+
+	w.Close()
+	os.Stdout = oldStdout
 }

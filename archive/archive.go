@@ -23,6 +23,9 @@ type Extractor interface {
 	Close() error
 	Progresser
 }
+type stdoutWrapper struct{ *os.File }
+
+func (stdoutWrapper) Close() error { return nil }
 
 // Options содержит унифицированные параметры как для zip, так и для tar.
 type Options struct {

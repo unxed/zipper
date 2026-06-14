@@ -59,7 +59,7 @@ func runZip(args []string) error {
 	if archivePath == "" {
 		return fmt.Errorf("zip: missing archive name")
 	}
-	if filepath.Ext(archivePath) == "" {
+	if archivePath != "-" && filepath.Ext(archivePath) == "" {
 		archivePath += ".zip"
 	}
 

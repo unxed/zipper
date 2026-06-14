@@ -39,6 +39,8 @@ func NewZipArchiver(filename, chroot string, opts Options) (Archiver, error) {
 	} else {
 		if opts.SplitSize > 0 {
 			f, err = zip.NewMultiVolumeWriter(filename, opts.SplitSize)
+		} else if filename == "-" {
+			f = stdoutWrapper{os.Stdout}
 		} else {
 			f, err = os.Create(filename)
 		}

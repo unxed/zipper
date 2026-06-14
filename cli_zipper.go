@@ -97,7 +97,7 @@ func runZipper(args []string) error {
 	}
 
 	archivePath := parsedArgs[0]
-	if filepath.Ext(archivePath) == "" {
+	if archivePath != "-" && filepath.Ext(archivePath) == "" {
 		archivePath += archive.DefaultFormat()
 	}
 

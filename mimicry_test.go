@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -8,6 +9,14 @@ import (
 func TestMainMimicryLogic(t *testing.T) {
 	// Мы не можем вызвать main() напрямую без выхода из теста,
 	// но мы можем протестировать функцию showHelp для разных имен.
+
+	oldStdout := os.Stdout
+	_, w, _ := os.Pipe()
+	os.Stdout = w
+	defer func() {
+		w.Close()
+		os.Stdout = oldStdout
+	}()
 
 	testNames := []string{"tar", "zip", "unzip", "zipper"}
 	for _, name := range testNames {

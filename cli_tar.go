@@ -107,12 +107,15 @@ func runTar(args []string) error {
 	}
 
 	if archivePath == "" {
-		return fmt.Errorf("tar: archive path not specified")
+		archivePath = "-"
 	}
 
 	if mode == "t" {
 		return runList(archivePath, opts)
 	} else if mode == "c" {
+		if len(files) == 0 {
+			return fmt.Errorf("tar: cowardly refusing to create an empty archive")
+		}
 		a, err := archive.NewArchiver(archivePath, ".", opts)
 		if err != nil {
 			return err
