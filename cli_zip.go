@@ -17,6 +17,8 @@ func runZip(args []string) error {
 	var files []string
 	deleteMode := false
 
+	var excludes []string
+
 	for i := 1; i < len(args); i++ {
 		arg := args[i]
 		if strings.HasPrefix(arg, "-") {
@@ -32,6 +34,11 @@ func runZip(args []string) error {
 			} else if arg == "-P" {
 				if i+1 < len(args) {
 					opts.Password = args[i+1]
+					i++
+				}
+			} else if arg == "-x" {
+				if i+1 < len(args) {
+					excludes = append(excludes, args[i+1])
 					i++
 				}
 			}
@@ -76,6 +83,14 @@ func runZip(args []string) error {
 	for _, f := range files {
 		err := filepath.Walk(f, func(path string, info os.FileInfo, err error) error {
 			if err == nil && path != "." {
+				for _, ex := range excludes {
+					if matched, _ := filepath.Match(ex, info.Name()); matched {
+						if info.IsDir() {
+							return filepath.SkipDir
+						}
+						return nil
+					}
+				}
 				fMap[path] = info
 			}
 			return err

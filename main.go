@@ -56,6 +56,7 @@ func showHelp(base string) {
 		fmt.Println("Options:")
 		fmt.Println("  -c             Create archive")
 		fmt.Println("  -x             Extract archive")
+		fmt.Println("  -t             List archive contents")
 		fmt.Println("  -r             Append files to archive")
 		fmt.Println("  -d, --delete   Delete files from archive")
 		fmt.Println("  -z             Gzip compression")
@@ -80,6 +81,7 @@ func showHelp(base string) {
 		fmt.Println("  -d <outdir>    Output directory")
 		fmt.Println("  -o             Overwrite files without prompting")
 		fmt.Println("  -n             Never overwrite existing files")
+		fmt.Println("  -l             List archive contents")
 		fmt.Println("  -P <password>  Password for decryption")
 	default:
 		fmt.Println("zipper - modern cross-platform archiver")
@@ -87,6 +89,7 @@ func showHelp(base string) {
 		fmt.Println("Commands:")
 		fmt.Println("  c              Create archive")
 		fmt.Println("  x              Extract archive")
+		fmt.Println("  l              List archive contents")
 		fmt.Println("  a              Append files to archive")
 		fmt.Println("  d              Delete files from archive")
 		fmt.Println("  repair         Repair archive using embedded recovery record")
@@ -118,5 +121,6 @@ func showHelp(base string) {
 		fmt.Println("  -strip-components <num> Strip <num> leading components from file names")
 		fmt.Println("  -max-file-size <bytes> Max allowed file size for extraction")
 		fmt.Println("  -max-ratio <ratio> Max allowed decompression ratio")
+		fmt.Println("  -exclude <pattern> Exclude files matching pattern (can be used multiple times)")
 	}
 }

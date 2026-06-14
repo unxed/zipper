@@ -21,6 +21,8 @@ func runTar(args []string) error {
 	opts := archive.Options{Xattrs: true} // По умолчанию сохраняем расширенные атрибуты
 	var files []string
 
+	var excludes []string
+
 	for i := 1; i < len(args); i++ {
 		arg := args[i]
 		if arg == "--zstd" || arg == "-a" {
@@ -33,6 +35,10 @@ func runTar(args []string) error {
 		}
 		if arg == "--append" || arg == "--update" {
 			mode = "r"
+			continue
+		}
+		if strings.HasPrefix(arg, "--exclude=") {
+			excludes = append(excludes, strings.TrimPrefix(arg, "--exclude="))
 			continue
 		}
 		if len(arg) == 2 && arg[0] == '-' && arg[1] >= '0' && arg[1] <= '9' {
@@ -53,6 +59,8 @@ func runTar(args []string) error {
 					mode = "c"
 				case 'x':
 					mode = "x"
+				case 't':
+					mode = "t"
 				case 'r':
 					mode = "r"
 				case 'd':
@@ -96,7 +104,9 @@ func runTar(args []string) error {
 		return fmt.Errorf("tar: archive path not specified")
 	}
 
-	if mode == "c" {
+	if mode == "t" {
+		return runList(archivePath, opts)
+	} else if mode == "c" {
 		a, err := archive.NewArchiver(archivePath, ".", opts)
 		if err != nil {
 			return err
@@ -107,6 +117,14 @@ func runTar(args []string) error {
 		for _, f := range files {
 			err := filepath.Walk(f, func(path string, info os.FileInfo, err error) error {
 				if err == nil && path != "." {
+					for _, ex := range excludes {
+						if matched, _ := filepath.Match(ex, info.Name()); matched {
+							if info.IsDir() {
+								return filepath.SkipDir
+							}
+							return nil
+						}
+					}
 					fMap[path] = info
 				}
 				return err

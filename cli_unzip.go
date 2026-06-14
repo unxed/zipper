@@ -16,6 +16,8 @@ func runUnzip(args []string) error {
 	var archivePath string
 	outDir := "."
 
+	listMode := false
+
 	for i := 1; i < len(args); i++ {
 		arg := args[i]
 		if arg == "-d" {
@@ -28,6 +30,8 @@ func runUnzip(args []string) error {
 			opts.KeepNewerFiles = false
 		} else if arg == "-n" {
 			opts.KeepOldFiles = true
+		} else if arg == "-l" {
+			listMode = true
 		} else if arg == "-P" {
 			if i+1 < len(args) {
 				opts.Password = args[i+1]
@@ -43,6 +47,10 @@ func runUnzip(args []string) error {
 	}
 	if filepath.Ext(archivePath) == "" {
 		archivePath += ".zip"
+	}
+
+	if listMode {
+		return runList(archivePath, opts)
 	}
 
 	os.MkdirAll(outDir, 0755)

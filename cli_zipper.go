@@ -11,6 +11,10 @@ import (
 	"github.com/unxed/zipper/archive"
 )
 
+type stringSlice []string
+
+func (s *stringSlice) String() string { return strings.Join(*s, ", ") }
+func (s *stringSlice) Set(value string) error { *s = append(*s, value); return nil }
 func runZipper(args []string) error {
 	if len(args) < 3 {
 		return fmt.Errorf("usage: zipper <command> [options] <archive> [files...]\nCommands: c (create), x (extract)")
@@ -25,7 +29,7 @@ func runZipper(args []string) error {
 		level          int
 		xattrs         bool
 		splitSizeStr   string
-        solid          bool
+		solid          bool
 		method         string
 		incremental    bool
 		keepOld        bool
@@ -48,8 +52,10 @@ func runZipper(args []string) error {
 		maxRatio       int64
 		recoveryExternal bool
 		lock           bool
+		excludes       stringSlice
 	)
 
+	fs.Var(&excludes, "exclude", "Exclude files matching pattern")
 	fs.StringVar(&outDir, "C", ".", "Change to directory")
 	fs.IntVar(&concurrency, "j", 0, "Concurrency")
 	fs.IntVar(&level, "l", 0, "Compression level (1-9)")
@@ -129,6 +135,9 @@ func runZipper(args []string) error {
 	}
 
 	switch cmd {
+	case "l":
+		return runList(archivePath, opts)
+
 	case "c":
 		if len(parsedArgs) < 2 {
 			return fmt.Errorf("please specify files to archive")
