@@ -130,3 +130,120 @@ func TestCli_ZipExcludes(t *testing.T) {
 		t.Error("expected exclude.txt to be excluded by zip -x")
 	}
 }
+
+func TestCli_Piping(t *testing.T) {
+	tmp := t.TempDir()
+	srcDir := filepath.Join(tmp, "src")
+	dstDir := filepath.Join(tmp, "dst")
+	os.MkdirAll(srcDir, 0755)
+
+	os.WriteFile(filepath.Join(srcDir, "pipe.txt"), []byte("piped data stream"), 0644)
+
+	// 1. Archive to STDOUT
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	oldWd, _ := os.Getwd()
+	os.Chdir(srcDir)
+	err := runTar([]string{"tar", "-cf", "-", "pipe.txt"})
+	os.Chdir(oldWd)
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatalf("tar cf to stdout failed: %v", err)
+	}
+
+	var archiveData bytes.Buffer
+	io.Copy(&archiveData, r)
+
+	if archiveData.Len() == 0 {
+		t.Fatal("captured stdout archive data is empty")
+	}
+
+	// 2. Extract from STDIN
+	os.MkdirAll(dstDir, 0755)
+	oldStdin := os.Stdin
+	inR, inW, _ := os.Pipe()
+	os.Stdin = inR
+	defer func() { os.Stdin = oldStdin }()
+
+	go func() {
+		inW.Write(archiveData.Bytes())
+		inW.Close()
+	}()
+
+	os.Chdir(dstDir)
+	err = runTar([]string{"tar", "-xf", "-"})
+	os.Chdir(oldWd)
+	if err != nil {
+		t.Fatalf("tar xf from stdin failed: %v", err)
+	}
+
+	b, err := os.ReadFile(filepath.Join(dstDir, "pipe.txt"))
+	if err != nil {
+		t.Fatalf("failed to read piped file: %v", err)
+	}
+	if string(b) != "piped data stream" {
+		t.Errorf("content mismatch: got %q, want 'piped data stream'", string(b))
+	}
+}
+
+func TestCli_PipingZip(t *testing.T) {
+	tmp := t.TempDir()
+	srcDir := filepath.Join(tmp, "src")
+	dstDir := filepath.Join(tmp, "dst")
+	os.MkdirAll(srcDir, 0755)
+
+	os.WriteFile(filepath.Join(srcDir, "pipe.txt"), []byte("zip piped data"), 0644)
+
+	oldWd, _ := os.Getwd()
+	os.Chdir(srcDir)
+	defer os.Chdir(oldWd)
+
+	// 1. Zip to STDOUT
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runZip([]string{"zip", "-r", "-", "pipe.txt"})
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatalf("zip to stdout failed: %v", err)
+	}
+
+	var archiveData bytes.Buffer
+	io.Copy(&archiveData, r)
+
+	if archiveData.Len() == 0 {
+		t.Fatal("captured zip stdout is empty")
+	}
+
+	// 2. Unzip from STDIN
+	os.MkdirAll(dstDir, 0755)
+	oldStdin := os.Stdin
+	inR, inW, _ := os.Pipe()
+	os.Stdin = inR
+	defer func() { os.Stdin = oldStdin }()
+
+	go func() {
+		inW.Write(archiveData.Bytes())
+		inW.Close()
+	}()
+
+	err = runUnzip([]string{"unzip", "-", "-d", dstDir})
+	if err != nil {
+		t.Fatalf("unzip from stdin failed: %v", err)
+	}
+
+	b, err := os.ReadFile(filepath.Join(dstDir, "pipe.txt"))
+	if err != nil {
+		t.Fatalf("failed to read unzipped file: %v", err)
+	}
+	if string(b) != "zip piped data" {
+		t.Errorf("content mismatch: got %q, want 'zip piped data'", string(b))
+	}
+}

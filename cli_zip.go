@@ -23,7 +23,7 @@ func runZip(args []string) error {
 
 	for i := 1; i < len(args); i++ {
 		arg := args[i]
-		if strings.HasPrefix(arg, "-") {
+		if strings.HasPrefix(arg, "-") && arg != "-" {
 			if arg == "-0" {
 				opts.Method = "store"
 				opts.Level = 0

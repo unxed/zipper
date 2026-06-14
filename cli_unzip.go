@@ -41,7 +41,7 @@ func runUnzip(args []string) error {
 			}
 		} else if arg == "--progress" || arg == "-progress" {
 			progress = true
-		} else if !strings.HasPrefix(arg, "-") && archivePath == "" {
+		} else if (arg == "-" || !strings.HasPrefix(arg, "-")) && archivePath == "" {
 			archivePath = arg
 		}
 	}

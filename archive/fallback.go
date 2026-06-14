@@ -17,7 +17,11 @@ type fallbackExtractor struct {
 }
 
 func NewFallbackExtractor(filename, chroot string, opts Options) (Extractor, error) {
-	return &fallbackExtractor{filename: filename, chroot: chroot}, nil
+	absChroot, err := filepath.Abs(chroot)
+	if err != nil {
+		return nil, err
+	}
+	return &fallbackExtractor{filename: filename, chroot: absChroot}, nil
 }
 
 func (e *fallbackExtractor) Extract(ctx context.Context) error {
