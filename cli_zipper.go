@@ -53,9 +53,11 @@ func runZipper(args []string) error {
 		recoveryExternal bool
 		lock           bool
 		excludes       stringSlice
+		progress       bool
 	)
 
 	fs.Var(&excludes, "exclude", "Exclude files matching pattern")
+	fs.BoolVar(&progress, "progress", false, "Show progress bar")
 	fs.StringVar(&outDir, "C", ".", "Change to directory")
 	fs.IntVar(&concurrency, "j", 0, "Concurrency")
 	fs.IntVar(&level, "l", 0, "Compression level (1-9)")
@@ -155,6 +157,7 @@ func runZipper(args []string) error {
 		defer a.Close()
 
 		files := make(map[string]os.FileInfo)
+		var totalBytes, totalEntries int64
 		for _, target := range parsedArgs[1:] {
 			targetPath := target
 			if !filepath.IsAbs(targetPath) {
@@ -164,8 +167,18 @@ func runZipper(args []string) error {
 				if err != nil {
 					return err
 				}
+				for _, ex := range excludes {
+					if matched, _ := filepath.Match(ex, info.Name()); matched {
+						if info.IsDir() {
+							return filepath.SkipDir
+						}
+						return nil
+					}
+				}
 				if path != absChroot {
 					files[path] = info
+					totalBytes += info.Size()
+					totalEntries++
 				}
 				return nil
 			})
@@ -174,7 +187,15 @@ func runZipper(args []string) error {
 			}
 		}
 
-		if err := a.Archive(context.Background(), files); err != nil {
+		var stopProgress func()
+		if progress {
+			stopProgress = startProgressBar(a, totalBytes, totalEntries, "Archiving")
+		}
+		err = a.Archive(context.Background(), files)
+		if stopProgress != nil {
+			stopProgress()
+		}
+		if err != nil {
 			return fmt.Errorf("archive error: %w", err)
 		}
 		return nil
@@ -282,7 +303,15 @@ func runZipper(args []string) error {
 		}
 		defer e.Close()
 
-		if err := e.Extract(context.Background()); err != nil {
+		var stopProgress func()
+		if progress {
+			stopProgress = startProgressBar(e, 0, 0, "Extracting")
+		}
+		err = e.Extract(context.Background())
+		if stopProgress != nil {
+			stopProgress()
+		}
+		if err != nil {
 			return fmt.Errorf("extract error: %w", err)
 		}
 		return nil

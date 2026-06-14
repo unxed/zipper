@@ -19,6 +19,8 @@ func runZip(args []string) error {
 
 	var excludes []string
 
+	var progress bool
+
 	for i := 1; i < len(args); i++ {
 		arg := args[i]
 		if strings.HasPrefix(arg, "-") {
@@ -41,6 +43,8 @@ func runZip(args []string) error {
 					excludes = append(excludes, args[i+1])
 					i++
 				}
+			} else if arg == "--progress" || arg == "-progress" {
+				progress = true
 			}
 			// Все остальные флаги (вроде -r) пока просто игнорируем
 		} else {
@@ -80,6 +84,7 @@ func runZip(args []string) error {
 	defer a.Close()
 
 	fMap := make(map[string]os.FileInfo)
+	var totalBytes, totalEntries int64
 	for _, f := range files {
 		err := filepath.Walk(f, func(path string, info os.FileInfo, err error) error {
 			if err == nil && path != "." {
@@ -92,6 +97,8 @@ func runZip(args []string) error {
 					}
 				}
 				fMap[path] = info
+				totalBytes += info.Size()
+				totalEntries++
 			}
 			return err
 		})
@@ -99,5 +106,13 @@ func runZip(args []string) error {
 			return err
 		}
 	}
-	return a.Archive(context.Background(), fMap)
+	var stopProgress func()
+	if progress {
+		stopProgress = startProgressBar(a, totalBytes, totalEntries, "Archiving")
+	}
+	err = a.Archive(context.Background(), fMap)
+	if stopProgress != nil {
+		stopProgress()
+	}
+	return err
 }

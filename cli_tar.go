@@ -23,6 +23,8 @@ func runTar(args []string) error {
 
 	var excludes []string
 
+	var progress bool
+
 	for i := 1; i < len(args); i++ {
 		arg := args[i]
 		if arg == "--zstd" || arg == "-a" {
@@ -39,6 +41,10 @@ func runTar(args []string) error {
 		}
 		if strings.HasPrefix(arg, "--exclude=") {
 			excludes = append(excludes, strings.TrimPrefix(arg, "--exclude="))
+			continue
+		}
+		if arg == "--progress" {
+			progress = true
 			continue
 		}
 		if len(arg) == 2 && arg[0] == '-' && arg[1] >= '0' && arg[1] <= '9' {
@@ -114,6 +120,7 @@ func runTar(args []string) error {
 		defer a.Close()
 
 		fMap := make(map[string]os.FileInfo)
+		var totalBytes, totalEntries int64
 		for _, f := range files {
 			err := filepath.Walk(f, func(path string, info os.FileInfo, err error) error {
 				if err == nil && path != "." {
@@ -126,6 +133,8 @@ func runTar(args []string) error {
 						}
 					}
 					fMap[path] = info
+					totalBytes += info.Size()
+					totalEntries++
 				}
 				return err
 			})
@@ -133,14 +142,30 @@ func runTar(args []string) error {
 				return err
 			}
 		}
-		return a.Archive(context.Background(), fMap)
+		var stopProgress func()
+		if progress {
+			stopProgress = startProgressBar(a, totalBytes, totalEntries, "Archiving")
+		}
+		err = a.Archive(context.Background(), fMap)
+		if stopProgress != nil {
+			stopProgress()
+		}
+		return err
 	} else if mode == "x" {
 		e, err := archive.NewExtractor(archivePath, ".", opts)
 		if err != nil {
 			return err
 		}
 		defer e.Close()
-		return e.Extract(context.Background())
+		var stopProgress func()
+		if progress {
+			stopProgress = startProgressBar(e, 0, 0, "Extracting")
+		}
+		err = e.Extract(context.Background())
+		if stopProgress != nil {
+			stopProgress()
+		}
+		return err
 	} else if mode == "r" {
 		u, err := archive.NewUpdater(archivePath, opts)
 		if err != nil {

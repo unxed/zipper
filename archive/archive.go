@@ -5,16 +5,23 @@ import (
 	"os"
 )
 
+// Progresser описывает интерфейс для получения статистики процесса
+type Progresser interface {
+	Written() (bytes, entries int64)
+}
+
 // Archiver описывает абстрактный интерфейс для создания архивов.
 type Archiver interface {
 	Archive(ctx context.Context, files map[string]os.FileInfo) error
 	Close() error
+	Progresser
 }
 
 // Extractor описывает абстрактный интерфейс для распаковки архивов.
 type Extractor interface {
 	Extract(ctx context.Context) error
 	Close() error
+	Progresser
 }
 
 // Options содержит унифицированные параметры как для zip, так и для tar.

@@ -18,6 +18,8 @@ func runUnzip(args []string) error {
 
 	listMode := false
 
+	var progress bool
+
 	for i := 1; i < len(args); i++ {
 		arg := args[i]
 		if arg == "-d" {
@@ -37,6 +39,8 @@ func runUnzip(args []string) error {
 				opts.Password = args[i+1]
 				i++
 			}
+		} else if arg == "--progress" || arg == "-progress" {
+			progress = true
 		} else if !strings.HasPrefix(arg, "-") && archivePath == "" {
 			archivePath = arg
 		}
@@ -60,5 +64,13 @@ func runUnzip(args []string) error {
 	}
 	defer e.Close()
 
-	return e.Extract(context.Background())
+	var stopProgress func()
+	if progress {
+		stopProgress = startProgressBar(e, 0, 0, "Extracting")
+	}
+	err = e.Extract(context.Background())
+	if stopProgress != nil {
+		stopProgress()
+	}
+	return err
 }

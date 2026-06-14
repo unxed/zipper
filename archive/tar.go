@@ -75,6 +75,9 @@ func (t *tarArchiver) Close() error {
 	}
 	return err
 }
+func (t *tarArchiver) Written() (bytes, entries int64) {
+	return t.a.Written()
+}
 
 type tarExtractor struct {
 	e *tar.Extractor
@@ -142,4 +145,8 @@ func (t *tarExtractor) Extract(ctx context.Context) error {
 
 func (t *tarExtractor) Close() error {
 	return t.e.Close()
+}
+
+func (t *tarExtractor) Written() (bytes, entries int64) {
+	return t.e.Written()
 }

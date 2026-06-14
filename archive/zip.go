@@ -135,6 +135,9 @@ func (z *zipArchiver) Close() error {
 	}
 	return nil
 }
+func (z *zipArchiver) Written() (bytes, entries int64) {
+	return z.a.Written()
+}
 
 type zipExtractor struct {
 	e *zip.Extractor
@@ -202,4 +205,8 @@ func (z *zipExtractor) Extract(ctx context.Context) error {
 
 func (z *zipExtractor) Close() error {
 	return z.e.Close()
+}
+
+func (z *zipExtractor) Written() (bytes, entries int64) {
+	return z.e.Written()
 }

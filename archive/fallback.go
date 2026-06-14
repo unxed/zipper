@@ -84,6 +84,9 @@ func (e *fallbackExtractor) Extract(ctx context.Context) error {
 func (e *fallbackExtractor) Close() error {
 	return nil
 }
+func (e *fallbackExtractor) Written() (bytes, entries int64) {
+	return 0, 0
+}
 
 type fallbackArchiver struct {
 	filename string
@@ -149,4 +152,8 @@ func (a *fallbackArchiver) Close() error {
 		return a.format.Archive(context.Background(), a.f, a.files)
 	}
 	return nil
+}
+
+func (a *fallbackArchiver) Written() (bytes, entries int64) {
+	return 0, 0
 }

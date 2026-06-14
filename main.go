@@ -104,6 +104,7 @@ func showHelp(base string) {
 		fmt.Println("  -p <password>  Set password for encryption/decryption")
 		fmt.Println("  -e             Encrypt Central Directory (CDE) for ZIP")
 		fmt.Println("  -incremental   Incremental backup/restore (.zip_dumpdir)")
+		fmt.Println("  -progress      Show progress bar")
 		fmt.Println("  -keep-old      Do not overwrite existing files during extraction")
 		fmt.Println("  -keep-newer    Only overwrite if archive file is newer")
 		fmt.Println("  -keep-broken   Keep extracted files even if CRC/decryption fails")
