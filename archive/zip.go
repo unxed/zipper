@@ -108,13 +108,13 @@ func (z *zipArchiver) Archive(ctx context.Context, files map[string]os.FileInfo)
 
 func (z *zipArchiver) Close() error {
 	if z.opts.Lock {
-		z.a.SetComment("[F4LOCKED] " + z.opts.Password)
+		z.a.SetComment("[LOCKED] " + z.opts.Password)
 	}
 	err1 := z.a.Close()
 	err2 := z.f.Close()
 
 	if z.tempFile != "" {
-		encErr := zip.EncapsulateF4CryptZip(z.filename, z.tempFile, z.opts.Password)
+		encErr := zip.EncapsulateXCryptZip(z.filename, z.tempFile, z.opts.Password)
 		os.Remove(z.tempFile)
 		if encErr != nil {
 			return encErr
