@@ -196,7 +196,7 @@ func runZipper(args []string) error {
 			stopProgress()
 		}
 		if err != nil {
-			return fmt.Errorf("archive error: %w", err)
+			return err
 		}
 		return nil
 
@@ -252,41 +252,6 @@ func runZipper(args []string) error {
 			}
 		}
 		return nil
-		absChroot, err := filepath.Abs(outDir)
-		if err != nil {
-			return fmt.Errorf("invalid chroot directory: %w", err)
-		}
-
-		a, err := archive.NewArchiver(archivePath, absChroot, opts)
-		if err != nil {
-			return fmt.Errorf("failed to create archiver: %w", err)
-		}
-		defer a.Close()
-
-		files := make(map[string]os.FileInfo)
-		for _, target := range parsedArgs[1:] {
-			targetPath := target
-			if !filepath.IsAbs(targetPath) {
-				targetPath = filepath.Join(absChroot, targetPath)
-			}
-			err := filepath.Walk(targetPath, func(path string, info os.FileInfo, err error) error {
-				if err != nil {
-					return err
-				}
-				if path != absChroot {
-					files[path] = info
-				}
-				return nil
-			})
-			if err != nil {
-				return fmt.Errorf("failed to walk %s: %w", target, err)
-			}
-		}
-
-		if err := a.Archive(context.Background(), files); err != nil {
-			return fmt.Errorf("archive error: %w", err)
-		}
-		return nil
 
 	case "x":
 		absOut, err := filepath.Abs(outDir)
@@ -312,7 +277,7 @@ func runZipper(args []string) error {
 			stopProgress()
 		}
 		if err != nil {
-			return fmt.Errorf("extract error: %w", err)
+			return err
 		}
 		return nil
 	case "repair":

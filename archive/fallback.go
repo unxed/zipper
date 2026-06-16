@@ -138,8 +138,13 @@ func NewFallbackArchiver(filename, chroot string, opts Options) (Archiver, error
 func (a *fallbackArchiver) Archive(ctx context.Context, files map[string]os.FileInfo) error {
 	for path, info := range files {
 		rel, err := filepath.Rel(a.chroot, path)
-		if err != nil {
-			return err
+		if err != nil || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
+			rel = filepath.ToSlash(path)
+			vol := filepath.VolumeName(path)
+			if vol != "" {
+				rel = strings.TrimPrefix(rel, filepath.ToSlash(vol))
+			}
+			rel = strings.TrimPrefix(rel, "/")
 		}
 		if rel == "." || rel == "" {
 			continue
