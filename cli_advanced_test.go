@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/unxed/zip"
 )
 
 func TestCli_Excludes(t *testing.T) {
@@ -245,5 +247,78 @@ func TestCli_PipingZip(t *testing.T) {
 	}
 	if string(b) != "zip piped data" {
 		t.Errorf("content mismatch: got %q, want 'zip piped data'", string(b))
+	}
+}
+func TestCli_OutsideChrootArchiving(t *testing.T) {
+	tmp := t.TempDir()
+	workspace := filepath.Join(tmp, "workspace")
+	outsideDir := filepath.Join(tmp, "outside_data")
+	os.MkdirAll(workspace, 0755)
+	os.MkdirAll(outsideDir, 0755)
+
+	outsideFile := filepath.Join(outsideDir, "test.txt")
+	os.WriteFile(outsideFile, []byte("outside chroot content"), 0644)
+
+	archivePath := filepath.Join(workspace, "archive.zip")
+
+	err := runZipper([]string{"zipper", "c", "-C", workspace, archivePath, outsideFile})
+	if err != nil {
+		t.Fatalf("Expected success archiving outside file, got error: %v", err)
+	}
+
+	dstDir := filepath.Join(tmp, "extracted")
+	os.MkdirAll(dstDir, 0755)
+	err = runZipper([]string{"zipper", "x", "-C", dstDir, archivePath})
+	if err != nil {
+		t.Fatalf("Extraction failed: %v", err)
+	}
+
+	found := false
+	filepath.Walk(dstDir, func(path string, info os.FileInfo, err error) error {
+		if err == nil && !info.IsDir() && info.Name() == "test.txt" {
+			b, _ := os.ReadFile(path)
+			if string(b) == "outside chroot content" {
+				found = true
+			}
+		}
+		return nil
+	})
+
+	if !found {
+		t.Error("Failed to find or verify the content of the safely normalized outside-chroot file")
+	}
+}
+
+func TestCli_TorrentZipCRC32Validation(t *testing.T) {
+	tmp := t.TempDir()
+	srcDir := filepath.Join(tmp, "src")
+	os.MkdirAll(filepath.Join(srcDir, "sub"), 0755)
+	os.WriteFile(filepath.Join(srcDir, "a.txt"), []byte("content a"), 0644)
+	os.WriteFile(filepath.Join(srcDir, "sub", "b.txt"), []byte("content b"), 0644)
+
+	archivePath := filepath.Join(tmp, "torrent.zip")
+
+	err := runZipper([]string{"zipper", "c", "-C", srcDir, "-torrentzip", archivePath, "a.txt", "sub/b.txt"})
+	if err != nil {
+		t.Fatalf("torrentzip creation failed: %v", err)
+	}
+
+	zr, err := zip.OpenReader(archivePath)
+	if err != nil {
+		t.Fatalf("failed to open zip reader: %v", err)
+	}
+	defer zr.Close()
+
+	if len(zr.File) < 2 {
+		t.Fatalf("expected at least 2 files, got %d", len(zr.File))
+	}
+
+	for _, file := range zr.File {
+		if file.CRC32 == 0 {
+			t.Errorf("file %s has CRC32 = 00000000, torrentzip requires non-zero checksums", file.Name)
+		}
+		if file.Flags&0x8 != 0 {
+			t.Errorf("file %s has Data Descriptor bit set, torrentzip forbids descriptors", file.Name)
+		}
 	}
 }
