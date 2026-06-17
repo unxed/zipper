@@ -5,8 +5,8 @@ go 1.25.5
 require (
 	github.com/mholt/archives v0.1.5
 	github.com/unxed/par2 v0.1.2
-	github.com/unxed/tar v0.1.55
-	github.com/unxed/zip v0.1.55
+	github.com/unxed/tar v0.1.67
+	github.com/unxed/zip v0.1.66
 )
 
 require (
@@ -48,4 +48,4 @@ require (
 	modernc.org/token v1.1.0 // indirect
 )
 
-replace github.com/ulikunitz/xz => github.com/unxed/xz v0.1.0
+replace github.com/ulikunitz/xz => github.com/unxed/xz v0.1.3

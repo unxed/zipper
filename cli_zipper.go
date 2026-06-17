@@ -16,12 +16,22 @@ type stringSlice []string
 func (s *stringSlice) String() string { return strings.Join(*s, ", ") }
 func (s *stringSlice) Set(value string) error { *s = append(*s, value); return nil }
 func runZipper(args []string) error {
-	if len(args) < 3 {
-		return fmt.Errorf("usage: zipper <command> [options] <archive> [files...]\nCommands: c (create), x (extract)")
+	// Предварительный поиск команды среди аргументов (чтобы флаги могли стоять ДО команды)
+	var cmd string
+	var cmdIdx int = -1
+	for i := 1; i < len(args); i++ {
+		if !strings.HasPrefix(args[i], "-") {
+			cmd = args[i]
+			cmdIdx = i
+			break
+		}
 	}
 
-	cmd := args[1]
-	fs := flag.NewFlagSet(cmd, flag.ContinueOnError)
+	if cmd == "" || cmdIdx == -1 {
+		return fmt.Errorf("usage: zipper [options] <command> <archive> [files...]\nCommands: c (create), x (extract), l (list), a (append), d (delete), repair")
+	}
+
+	fs := flag.NewFlagSet("zipper", flag.ContinueOnError)
 
 	var (
 		outDir         string
@@ -54,10 +64,12 @@ func runZipper(args []string) error {
 		lock           bool
 		excludes       stringSlice
 		progress       bool
+		trimParents    bool
 	)
 
 	fs.Var(&excludes, "exclude", "Exclude files matching pattern")
 	fs.BoolVar(&progress, "progress", false, "Show progress bar")
+	fs.BoolVar(&trimParents, "trim-parents", false, "Trim parent directories from targets (like 7z)")
 	fs.StringVar(&outDir, "C", ".", "Change to directory")
 	fs.IntVar(&concurrency, "j", 0, "Concurrency")
 	fs.IntVar(&level, "l", 0, "Compression level (1-9)")
@@ -87,7 +99,11 @@ func runZipper(args []string) error {
 	fs.Int64Var(&maxFileSize, "max-file-size", 0, "Max allowed file size for extraction")
 	fs.Int64Var(&maxRatio, "max-ratio", 0, "Max allowed decompression ratio")
 
-	if err := fs.Parse(args[2:]); err != nil {
+	// Собираем все аргументы, кроме самой команды, для парсинга флагов
+	flagArgs := append([]string{}, args[1:cmdIdx]...)
+	flagArgs = append(flagArgs, args[cmdIdx+1:]...)
+
+	if err := fs.Parse(flagArgs); err != nil {
 		return err
 	}
 	parsedArgs := fs.Args()
@@ -150,19 +166,17 @@ func runZipper(args []string) error {
 			return fmt.Errorf("invalid chroot directory: %w", err)
 		}
 
-		a, err := archive.NewArchiver(archivePath, absChroot, opts)
-		if err != nil {
-			return fmt.Errorf("failed to create archiver: %w", err)
-		}
-		defer a.Close()
-
 		files := make(map[string]os.FileInfo)
+		pathMapping := make(map[string]string)
 		var totalBytes, totalEntries int64
 		for _, target := range parsedArgs[1:] {
 			targetPath := target
 			if !filepath.IsAbs(targetPath) {
 				targetPath = filepath.Join(absChroot, targetPath)
 			}
+			targetPath = filepath.Clean(targetPath)
+			baseDir := filepath.Dir(targetPath)
+
 			err := filepath.Walk(targetPath, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return err
@@ -177,6 +191,12 @@ func runZipper(args []string) error {
 				}
 				if path != absChroot {
 					files[path] = info
+					if trimParents {
+						rel, relErr := filepath.Rel(baseDir, path)
+						if relErr == nil {
+							pathMapping[path] = filepath.ToSlash(rel)
+						}
+					}
 					totalBytes += info.Size()
 					totalEntries++
 				}
@@ -186,6 +206,15 @@ func runZipper(args []string) error {
 				return fmt.Errorf("failed to walk %s: %w", target, err)
 			}
 		}
+		if trimParents {
+			opts.PathMapping = pathMapping
+		}
+
+		a, err := archive.NewArchiver(archivePath, absChroot, opts)
+		if err != nil {
+			return fmt.Errorf("failed to create archiver: %w", err)
+		}
+		defer a.Close()
 
 		var stopProgress func()
 		if progress {
@@ -219,6 +248,9 @@ func runZipper(args []string) error {
 			if !filepath.IsAbs(targetPath) {
 				targetPath = filepath.Join(absChroot, targetPath)
 			}
+			targetPath = filepath.Clean(targetPath)
+			baseDir := filepath.Dir(targetPath)
+
 			fi, err := os.Stat(targetPath)
 			if err != nil {
 				return fmt.Errorf("failed to read file info for %s: %w", targetPath, err)
@@ -227,7 +259,15 @@ func runZipper(args []string) error {
 			if err != nil {
 				return fmt.Errorf("failed to open file %s: %w", targetPath, err)
 			}
-			err = u.Append(filepath.ToSlash(target), fi.Size(), f)
+
+			nameInArchive := filepath.ToSlash(target)
+			if trimParents {
+				rel, relErr := filepath.Rel(baseDir, targetPath)
+				if relErr == nil {
+					nameInArchive = filepath.ToSlash(rel)
+				}
+			}
+			err = u.Append(nameInArchive, fi.Size(), f)
 			f.Close()
 			if err != nil {
 				return fmt.Errorf("failed to append %s: %w", target, err)

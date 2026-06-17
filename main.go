@@ -123,5 +123,6 @@ func showHelp(base string) {
 		fmt.Println("  -max-file-size <bytes> Max allowed file size for extraction")
 		fmt.Println("  -max-ratio <ratio> Max allowed decompression ratio")
 		fmt.Println("  -exclude <pattern> Exclude files matching pattern (can be used multiple times)")
+		fmt.Println("  -trim-parents  Trim parent directories from targets (like 7z)")
 	}
 }

@@ -22,7 +22,8 @@ func SpoolStdin() (string, error) {
 		return "", err
 	}
 	defer f.Close()
-	if _, err := io.Copy(f, os.Stdin); err != nil {
+	// Используем 1МБ буфер для перехвата стандартного ввода (piping)
+	if _, err := io.CopyBuffer(f, os.Stdin, make([]byte, 1024*1024)); err != nil {
 		os.Remove(f.Name())
 		return "", err
 	}

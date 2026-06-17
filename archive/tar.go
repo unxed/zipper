@@ -52,6 +52,9 @@ func NewTarArchiver(filename, chroot string, opts Options) (Archiver, error) {
 	if opts.Level != 0 {
 		topts = append(topts, tar.WithArchiverLevel(opts.Level))
 	}
+	if opts.PathMapping != nil {
+		topts = append(topts, tar.WithArchiverPathMapping(opts.PathMapping))
+	}
 
 	a, err := tar.NewArchiver(filename, chroot, topts...)
 	if err != nil {
