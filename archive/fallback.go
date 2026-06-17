@@ -145,6 +145,7 @@ func (a *fallbackArchiver) Archive(ctx context.Context, files map[string]os.File
 				rel = strings.TrimPrefix(rel, filepath.ToSlash(vol))
 			}
 			rel = strings.TrimPrefix(rel, "/")
+			err = nil
 		}
 		if rel == "." || rel == "" {
 			continue

@@ -43,4 +43,45 @@ func TestFallbackEngine(t *testing.T) {
 	if string(b) != "fallback data" {
 		t.Errorf("expected 'fallback data', got %q", string(b))
 	}
+}type fallbackMockFileInfo struct {
+	name string
+	mode os.FileMode
+}
+func (m fallbackMockFileInfo) Name() string { return m.name }
+func (m fallbackMockFileInfo) Size() int64 { return 0 }
+func (m fallbackMockFileInfo) Mode() os.FileMode { return m.mode }
+func (m fallbackMockFileInfo) ModTime() time.Time { return time.Now() }
+func (m fallbackMockFileInfo) IsDir() bool { return m.mode.IsDir() }
+func (m fallbackMockFileInfo) Sys() interface{} { return nil }
+
+func TestFallbackArchiver_DifferentDrivesWindows(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows-only test")
+	}
+
+	tmp := t.TempDir()
+	archivePath := filepath.Join(tmp, "different_drives.tar.gz")
+
+	currentDrive := filepath.VolumeName(tmp)
+	targetDrive := "D:"
+	if currentDrive == "D:" || currentDrive == "d:" {
+		targetDrive = "C:"
+	}
+
+	targetPath := targetDrive + `\dummy_dir`
+
+	a, err := NewFallbackArchiver(archivePath, tmp, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer a.Close()
+
+	files := map[string]os.FileInfo{
+		targetPath: fallbackMockFileInfo{name: "dummy_dir", mode: os.ModeDir | 0755},
+	}
+
+	err = a.Archive(context.Background(), files)
+	if err != nil {
+		t.Fatalf("expected success, got error: %v", err)
+	}
 }
