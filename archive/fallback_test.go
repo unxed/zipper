@@ -1,6 +1,8 @@
 package archive
 
 import (
+    "time"
+    "runtime"
 	"context"
 	"os"
 	"path/filepath"
@@ -43,7 +45,9 @@ func TestFallbackEngine(t *testing.T) {
 	if string(b) != "fallback data" {
 		t.Errorf("expected 'fallback data', got %q", string(b))
 	}
-}type fallbackMockFileInfo struct {
+}
+
+type fallbackMockFileInfo struct {
 	name string
 	mode os.FileMode
 }
