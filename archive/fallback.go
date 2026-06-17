@@ -42,6 +42,8 @@ func (e *fallbackExtractor) Extract(ctx context.Context) error {
 		return fmt.Errorf("format %T does not support extraction", format)
 	}
 
+	copyBuf := make([]byte, 1024*1024) // 1MB buffer
+
 	return ex.Extract(ctx, stream, func(ctx context.Context, info archives.FileInfo) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -80,7 +82,7 @@ func (e *fallbackExtractor) Extract(ctx context.Context) error {
 		}
 		defer in.Close()
 
-		_, err = io.Copy(out, in)
+		_, err = io.CopyBuffer(out, in, copyBuf)
 		return err
 	})
 }
@@ -98,6 +100,7 @@ type fallbackArchiver struct {
 	format   archives.Archiver
 	f        io.WriteCloser
 	files    []archives.FileInfo
+	opts     Options
 }
 
 func NewFallbackArchiver(filename, chroot string, opts Options) (Archiver, error) {
@@ -132,20 +135,27 @@ func NewFallbackArchiver(filename, chroot string, opts Options) (Archiver, error
 		chroot:   chroot,
 		format:   format,
 		f:        f,
+		opts:     opts,
 	}, nil
 }
 
 func (a *fallbackArchiver) Archive(ctx context.Context, files map[string]os.FileInfo) error {
 	for path, info := range files {
-		rel, err := filepath.Rel(a.chroot, path)
-		if err != nil || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
-			rel = filepath.ToSlash(path)
-			vol := filepath.VolumeName(path)
-			if vol != "" {
-				rel = strings.TrimPrefix(rel, filepath.ToSlash(vol))
+		var rel string
+		var err error
+		if a.opts.PathMapping != nil && a.opts.PathMapping[path] != "" {
+			rel = a.opts.PathMapping[path]
+		} else {
+			rel, err = filepath.Rel(a.chroot, path)
+			if err != nil || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
+				rel = filepath.ToSlash(path)
+				vol := filepath.VolumeName(path)
+				if vol != "" {
+					rel = strings.TrimPrefix(rel, filepath.ToSlash(vol))
+				}
+				rel = strings.TrimPrefix(rel, "/")
+				err = nil
 			}
-			rel = strings.TrimPrefix(rel, "/")
-			err = nil
 		}
 		if rel == "." || rel == "" {
 			continue

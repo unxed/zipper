@@ -66,4 +66,5 @@ type Options struct {
 	MaxRatio           int64
 	RecoveryExternal   bool
 	Lock               bool
+	PathMapping        map[string]string
 }

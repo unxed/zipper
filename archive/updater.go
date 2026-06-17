@@ -53,7 +53,7 @@ func (z *zipUpdater) Append(name string, size int64, r io.Reader) error {
 		return err
 	}
 	if r != nil {
-		_, err = io.Copy(w, r)
+		_, err = io.CopyBuffer(w, r, make([]byte, 1024*1024))
 	}
 	return err
 }

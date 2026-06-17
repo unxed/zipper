@@ -78,6 +78,9 @@ func NewZipArchiver(filename, chroot string, opts Options) (Archiver, error) {
 	if opts.NoPlatformMetadata {
 		zopts = append(zopts, zip.WithArchiverPlatformMetadata(false))
 	}
+	if opts.PathMapping != nil {
+		zopts = append(zopts, zip.WithArchiverPathMapping(opts.PathMapping))
+	}
 
 	if opts.Method == "zstd" {
 		zopts = append(zopts, zip.WithArchiverMethod(zip.ZSTD))

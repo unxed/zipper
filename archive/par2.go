@@ -75,14 +75,16 @@ func RepairZipArchive(filename string) error {
 		return fmt.Errorf("embedded recovery record (.recovery.par2) or external .par2 sidecar not found")
 	}
 
-	parData := make([]byte, parSize)
+	// Стримим parity-данные во временный буфер
+	var parData bytes.Buffer
 	dataStart := parOffset + 30 + int64(len(".recovery.par2"))
-	if _, err := mvr.ReadAt(parData, dataStart); err != nil {
+	sr := io.NewSectionReader(mvr, dataStart, parSize)
+	if _, err := io.CopyBuffer(&parData, sr, make([]byte, 1024*1024)); err != nil {
 		return fmt.Errorf("failed to read recovery payload: %w", err)
 	}
 
 	srt := &sectionRepairTarget{target: mvr, size: parOffset}
-	return par2.RepairTargetData(srt, parData)
+	return par2.RepairTargetData(srt, parData.Bytes())
 }
 
 // RepairTarArchive извлекает .tarext/par2/recovery.par2 из TAR-архива (Stream 2)
