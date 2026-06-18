@@ -77,7 +77,7 @@ func runZipper(args []string) error {
 	fs.BoolVar(&encryptCD, "e", false, "Encrypt Central Directory (CDE)")
 	fs.IntVar(&seekChunkSize, "seek-chunk", 0, "Seek chunk size for solid archives (e.g. 1048576)")
 	fs.BoolVar(&seekContinuous, "seek-continuous", false, "Use continuous seek index (GZIDX) instead of chunked (SOZip)")
-	fs.BoolVar(&xattrs, "xattrs", true, "Preserve xattrs")
+	fs.BoolVar(&xattrs, "xattrs", false, "Preserve xattrs")
 	fs.BoolVar(&solid, "solid", false, "Use solid compression (zip)")
 	fs.StringVar(&method, "m", "", "Compression method (deflate, zstd, store, etc.)")
 	fs.BoolVar(&incremental, "incremental", false, "Incremental mode (.zip_dumpdir)")
