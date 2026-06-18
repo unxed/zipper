@@ -16,12 +16,22 @@ type stringSlice []string
 func (s *stringSlice) String() string { return strings.Join(*s, ", ") }
 func (s *stringSlice) Set(value string) error { *s = append(*s, value); return nil }
 func runZipper(args []string) error {
-	if len(args) < 3 {
-		return fmt.Errorf("usage: zipper <command> [options] <archive> [files...]\nCommands: c (create), x (extract)")
+	// Предварительный поиск команды среди аргументов (чтобы флаги могли стоять ДО команды)
+	var cmd string
+	var cmdIdx int = -1
+	for i := 1; i < len(args); i++ {
+		if !strings.HasPrefix(args[i], "-") {
+			cmd = args[i]
+			cmdIdx = i
+			break
+		}
 	}
 
-	cmd := args[1]
-	fs := flag.NewFlagSet(cmd, flag.ContinueOnError)
+	if cmd == "" || cmdIdx == -1 {
+		return fmt.Errorf("usage: zipper [options] <command> <archive> [files...]\nCommands: c (create), x (extract), l (list), a (append), d (delete), repair")
+	}
+
+	fs := flag.NewFlagSet("zipper", flag.ContinueOnError)
 
 	var (
 		outDir         string
@@ -89,7 +99,11 @@ func runZipper(args []string) error {
 	fs.Int64Var(&maxFileSize, "max-file-size", 0, "Max allowed file size for extraction")
 	fs.Int64Var(&maxRatio, "max-ratio", 0, "Max allowed decompression ratio")
 
-	if err := fs.Parse(args[2:]); err != nil {
+	// Собираем все аргументы, кроме самой команды, для парсинга флагов
+	flagArgs := append([]string{}, args[1:cmdIdx]...)
+	flagArgs = append(flagArgs, args[cmdIdx+1:]...)
+
+	if err := fs.Parse(flagArgs); err != nil {
 		return err
 	}
 	parsedArgs := fs.Args()
