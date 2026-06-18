@@ -5,8 +5,8 @@ go 1.25.5
 require (
 	github.com/mholt/archives v0.1.5
 	github.com/unxed/par2 v0.1.2
-	github.com/unxed/tar v0.1.56
-	github.com/unxed/zip v0.1.55
+	github.com/unxed/tar v0.1.59
+	github.com/unxed/zip v0.1.58
 )
 
 require (

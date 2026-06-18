@@ -322,3 +322,70 @@ func TestCli_TorrentZipCRC32Validation(t *testing.T) {
 		}
 	}
 }
+
+func TestCli_TrimParents(t *testing.T) {
+	tmp := t.TempDir()
+	srcDir := filepath.Join(tmp, "downloads", "bass24", "delphi", "3dTest")
+	os.MkdirAll(srcDir, 0755)
+
+	os.WriteFile(filepath.Join(srcDir, "file1.txt"), []byte("data1"), 0644)
+	os.WriteFile(filepath.Join(srcDir, "file2.txt"), []byte("data2"), 0644)
+
+	archivePath := filepath.Join(tmp, "trim_parents_test.zip")
+
+	// 1. Тест создания архива с опцией -trim-parents
+	err := runZipper([]string{"zipper", "c", "-trim-parents", archivePath, srcDir})
+	if err != nil {
+		t.Fatalf("zipper c with -trim-parents failed: %v", err)
+	}
+
+	zr, err := zip.OpenReader(archivePath)
+	if err != nil {
+		t.Fatalf("failed to open archive: %v", err)
+	}
+
+	found3dTest := false
+	foundFile1 := false
+	for _, f := range zr.File {
+		t.Logf("Zip entry name: %s", f.Name)
+		if f.Name == "3dTest/" {
+			found3dTest = true
+		}
+		if f.Name == "3dTest/file1.txt" {
+			foundFile1 = true
+		}
+		if strings.Contains(f.Name, "downloads") {
+			t.Errorf("found 'downloads' in path %q, expected it to be stripped", f.Name)
+		}
+	}
+	zr.Close()
+
+	if !found3dTest || !foundFile1 {
+		t.Errorf("expected trimmed paths (3dTest/ and 3dTest/file1.txt), got: found3dTest=%v, foundFile1=%v", found3dTest, foundFile1)
+	}
+
+	// 2. Тест добавления (append) файла с опцией -trim-parents
+	extraFile := filepath.Join(tmp, "downloads", "bass24", "delphi", "extra.txt")
+	os.WriteFile(extraFile, []byte("extra"), 0644)
+
+	err = runZipper([]string{"zipper", "a", "-trim-parents", archivePath, extraFile})
+	if err != nil {
+		t.Fatalf("zipper a with -trim-parents failed: %v", err)
+	}
+
+	zr2, err := zip.OpenReader(archivePath)
+	if err != nil {
+		t.Fatalf("failed to open archive: %v", err)
+	}
+	foundExtra := false
+	for _, f := range zr2.File {
+		if f.Name == "extra.txt" {
+			foundExtra = true
+		}
+	}
+	zr2.Close()
+
+	if !foundExtra {
+		t.Error("expected appended extra.txt to be trimmed to base name 'extra.txt'")
+	}
+}

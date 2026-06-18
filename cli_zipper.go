@@ -54,10 +54,12 @@ func runZipper(args []string) error {
 		lock           bool
 		excludes       stringSlice
 		progress       bool
+		trimParents    bool
 	)
 
 	fs.Var(&excludes, "exclude", "Exclude files matching pattern")
 	fs.BoolVar(&progress, "progress", false, "Show progress bar")
+	fs.BoolVar(&trimParents, "trim-parents", false, "Trim parent directories from targets (like 7z)")
 	fs.StringVar(&outDir, "C", ".", "Change to directory")
 	fs.IntVar(&concurrency, "j", 0, "Concurrency")
 	fs.IntVar(&level, "l", 0, "Compression level (1-9)")
@@ -150,19 +152,17 @@ func runZipper(args []string) error {
 			return fmt.Errorf("invalid chroot directory: %w", err)
 		}
 
-		a, err := archive.NewArchiver(archivePath, absChroot, opts)
-		if err != nil {
-			return fmt.Errorf("failed to create archiver: %w", err)
-		}
-		defer a.Close()
-
 		files := make(map[string]os.FileInfo)
+		pathMapping := make(map[string]string)
 		var totalBytes, totalEntries int64
 		for _, target := range parsedArgs[1:] {
 			targetPath := target
 			if !filepath.IsAbs(targetPath) {
 				targetPath = filepath.Join(absChroot, targetPath)
 			}
+			targetPath = filepath.Clean(targetPath)
+			baseDir := filepath.Dir(targetPath)
+
 			err := filepath.Walk(targetPath, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return err
@@ -177,6 +177,12 @@ func runZipper(args []string) error {
 				}
 				if path != absChroot {
 					files[path] = info
+					if trimParents {
+						rel, relErr := filepath.Rel(baseDir, path)
+						if relErr == nil {
+							pathMapping[path] = filepath.ToSlash(rel)
+						}
+					}
 					totalBytes += info.Size()
 					totalEntries++
 				}
@@ -186,6 +192,15 @@ func runZipper(args []string) error {
 				return fmt.Errorf("failed to walk %s: %w", target, err)
 			}
 		}
+		if trimParents {
+			opts.PathMapping = pathMapping
+		}
+
+		a, err := archive.NewArchiver(archivePath, absChroot, opts)
+		if err != nil {
+			return fmt.Errorf("failed to create archiver: %w", err)
+		}
+		defer a.Close()
 
 		var stopProgress func()
 		if progress {
@@ -219,6 +234,9 @@ func runZipper(args []string) error {
 			if !filepath.IsAbs(targetPath) {
 				targetPath = filepath.Join(absChroot, targetPath)
 			}
+			targetPath = filepath.Clean(targetPath)
+			baseDir := filepath.Dir(targetPath)
+
 			fi, err := os.Stat(targetPath)
 			if err != nil {
 				return fmt.Errorf("failed to read file info for %s: %w", targetPath, err)
@@ -227,7 +245,15 @@ func runZipper(args []string) error {
 			if err != nil {
 				return fmt.Errorf("failed to open file %s: %w", targetPath, err)
 			}
-			err = u.Append(filepath.ToSlash(target), fi.Size(), f)
+
+			nameInArchive := filepath.ToSlash(target)
+			if trimParents {
+				rel, relErr := filepath.Rel(baseDir, targetPath)
+				if relErr == nil {
+					nameInArchive = filepath.ToSlash(rel)
+				}
+			}
+			err = u.Append(nameInArchive, fi.Size(), f)
 			f.Close()
 			if err != nil {
 				return fmt.Errorf("failed to append %s: %w", target, err)
