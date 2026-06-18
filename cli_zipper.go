@@ -5,7 +5,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -186,7 +185,7 @@ func runZipper(args []string) error {
 			targetPath = filepath.Clean(targetPath)
 			baseDir := filepath.Dir(targetPath)
 
-			err := filepath.WalkDir(targetPath, func(path string, d fs.DirEntry, err error) error {
+			err := filepath.WalkDir(targetPath, func(path string, d os.DirEntry, err error) error {
 				if err != nil {
 					return err
 				}
