@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -86,15 +87,19 @@ func runZip(args []string) error {
 	fMap := make(map[string]os.FileInfo)
 	var totalBytes, totalEntries int64
 	for _, f := range files {
-		err := filepath.Walk(f, func(path string, info os.FileInfo, err error) error {
+		err := filepath.WalkDir(f, func(path string, d fs.DirEntry, err error) error {
 			if err == nil && path != "." {
 				for _, ex := range excludes {
-					if matched, _ := filepath.Match(ex, info.Name()); matched {
-						if info.IsDir() {
+					if matched, _ := filepath.Match(ex, d.Name()); matched {
+						if d.IsDir() {
 							return filepath.SkipDir
 						}
 						return nil
 					}
+				}
+				info, err := d.Info()
+				if err != nil {
+					return err
 				}
 				fMap[path] = info
 				totalBytes += info.Size()

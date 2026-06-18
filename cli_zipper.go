@@ -5,6 +5,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -185,19 +186,23 @@ func runZipper(args []string) error {
 			targetPath = filepath.Clean(targetPath)
 			baseDir := filepath.Dir(targetPath)
 
-			err := filepath.Walk(targetPath, func(path string, info os.FileInfo, err error) error {
+			err := filepath.WalkDir(targetPath, func(path string, d fs.DirEntry, err error) error {
 				if err != nil {
 					return err
 				}
 				for _, ex := range excludes {
-					if matched, _ := filepath.Match(ex, info.Name()); matched {
-						if info.IsDir() {
+					if matched, _ := filepath.Match(ex, d.Name()); matched {
+						if d.IsDir() {
 							return filepath.SkipDir
 						}
 						return nil
 					}
 				}
 				if path != absChroot {
+					info, err := d.Info()
+					if err != nil {
+						return err
+					}
 					files[path] = info
 					if trimParents {
 						rel, relErr := filepath.Rel(baseDir, path)
