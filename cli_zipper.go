@@ -103,10 +103,18 @@ func runZipper(args []string) error {
 	flagArgs := append([]string{}, args[1:cmdIdx]...)
 	flagArgs = append(flagArgs, args[cmdIdx+1:]...)
 
-	if err := fs.Parse(flagArgs); err != nil {
-		return err
+	var parsedArgs []string
+	for {
+		if err := fs.Parse(flagArgs); err != nil {
+			return err
+		}
+		argsLeft := fs.Args()
+		if len(argsLeft) == 0 {
+			break
+		}
+		parsedArgs = append(parsedArgs, argsLeft[0])
+		flagArgs = argsLeft[1:]
 	}
-	parsedArgs := fs.Args()
 
 	if len(parsedArgs) < 1 {
 		return fmt.Errorf("archive name is required")
