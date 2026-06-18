@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 )
 
@@ -22,7 +23,33 @@ func main() {
 	// Перехват глобальных флагов версии и помощи
 	arg := os.Args[1]
 	if arg == "--version" || arg == "-v" || arg == "version" {
-		fmt.Printf("%s version %s\n", base, Version)
+		revision := ""
+		buildTime := ""
+		modified := ""
+		if info, ok := debug.ReadBuildInfo(); ok {
+			for _, setting := range info.Settings {
+				switch setting.Key {
+				case "vcs.revision":
+					revision = setting.Value
+				case "vcs.time":
+					buildTime = setting.Value
+				case "vcs.modified":
+					if setting.Value == "true" {
+						modified = " (dirty)"
+					}
+				}
+			}
+		}
+
+		if revision != "" {
+			shortRev := revision
+			if len(shortRev) > 8 {
+				shortRev = shortRev[:8]
+			}
+			fmt.Printf("%s version %s (%s%s, built %s)\n", base, Version, shortRev, modified, buildTime)
+		} else {
+			fmt.Printf("%s version %s\n", base, Version)
+		}
 		return
 	}
 	if arg == "--help" || arg == "-h" || arg == "help" {
