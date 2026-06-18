@@ -42,6 +42,8 @@ func (e *fallbackExtractor) Extract(ctx context.Context) error {
 		return fmt.Errorf("format %T does not support extraction", format)
 	}
 
+	copyBuf := make([]byte, 1024*1024) // 1MB buffer
+
 	return ex.Extract(ctx, stream, func(ctx context.Context, info archives.FileInfo) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -80,7 +82,7 @@ func (e *fallbackExtractor) Extract(ctx context.Context) error {
 		}
 		defer in.Close()
 
-		_, err = io.Copy(out, in)
+		_, err = io.CopyBuffer(out, in, copyBuf)
 		return err
 	})
 }
