@@ -1,14 +1,14 @@
 package archive
 
 import (
-    "os"
+	"context"
+	"fmt"
 	"github.com/mholt/archives"
-    "fmt"
-    "context"
+	"io"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
-    "io"
-    "io/fs"
 )
 
 type fallbackExtractor struct {

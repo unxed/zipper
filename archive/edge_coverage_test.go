@@ -118,7 +118,7 @@ func TestFallbackFS_Invalid(t *testing.T) {
 
 func TestArchiveOptions_DefaultMethod(t *testing.T) {
 	tmp := t.TempDir()
-	
+
 	// Проверка автоматического определения метода по расширению в NewArchiver
 	exts := []struct {
 		name   string
@@ -133,11 +133,11 @@ func TestArchiveOptions_DefaultMethod(t *testing.T) {
 	}
 
 	for _, tc := range exts {
-		// Мы не создаем реальный архиватор (чтобы не плодить файлы), 
+		// Мы не создаем реальный архиватор (чтобы не плодить файлы),
 		// а просто проверяем логику в factory.go через имитацию
 		archivePath := filepath.Join(tmp, tc.name)
 		opts := Options{}
-		
+
 		// Логика из NewArchiver
 		lower := strings.ToLower(archivePath)
 		if strings.HasSuffix(lower, ".zst") {
@@ -145,7 +145,7 @@ func TestArchiveOptions_DefaultMethod(t *testing.T) {
 		} else if strings.HasSuffix(lower, ".gz") || strings.HasSuffix(lower, ".tgz") {
 			opts.Method = "gzip"
 		}
-		
+
 		if opts.Method != tc.expect {
 			// Это просто проверка, что наши ожидания в тесте совпадают с логикой factory.go
 		}

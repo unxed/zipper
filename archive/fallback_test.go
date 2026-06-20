@@ -1,12 +1,12 @@
 package archive
 
 import (
-    "time"
-    "runtime"
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
+	"time"
 )
 
 func TestFallbackEngine(t *testing.T) {
@@ -51,12 +51,13 @@ type fallbackMockFileInfo struct {
 	name string
 	mode os.FileMode
 }
-func (m fallbackMockFileInfo) Name() string { return m.name }
-func (m fallbackMockFileInfo) Size() int64 { return 0 }
-func (m fallbackMockFileInfo) Mode() os.FileMode { return m.mode }
+
+func (m fallbackMockFileInfo) Name() string       { return m.name }
+func (m fallbackMockFileInfo) Size() int64        { return 0 }
+func (m fallbackMockFileInfo) Mode() os.FileMode  { return m.mode }
 func (m fallbackMockFileInfo) ModTime() time.Time { return time.Now() }
-func (m fallbackMockFileInfo) IsDir() bool { return m.mode.IsDir() }
-func (m fallbackMockFileInfo) Sys() interface{} { return nil }
+func (m fallbackMockFileInfo) IsDir() bool        { return m.mode.IsDir() }
+func (m fallbackMockFileInfo) Sys() interface{}   { return nil }
 
 func TestFallbackArchiver_DifferentDrivesWindows(t *testing.T) {
 	if runtime.GOOS != "windows" {

@@ -1,8 +1,8 @@
 package archive
 
 import (
-    "io"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/unxed/tar"

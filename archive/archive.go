@@ -58,7 +58,7 @@ type Options struct {
 	UnlinkFirst    bool
 	NumericOwner   bool
 
-	TorrentZip     bool
+	TorrentZip         bool
 	NoPlatformMetadata bool
 	NoTimes            bool
 	StripComponents    int

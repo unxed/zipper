@@ -1,12 +1,12 @@
 package archive
 
 import (
-    "path/filepath"
 	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/unxed/par2"
 	"github.com/unxed/tar"
@@ -24,14 +24,22 @@ type sectionRepairTarget struct {
 }
 
 func (s *sectionRepairTarget) ReadAt(p []byte, off int64) (n int, err error) {
-	if off >= s.size { return 0, io.EOF }
-	if off+int64(len(p)) > s.size { p = p[:s.size-off] }
+	if off >= s.size {
+		return 0, io.EOF
+	}
+	if off+int64(len(p)) > s.size {
+		p = p[:s.size-off]
+	}
 	return s.target.ReadAt(p, off)
 }
 
 func (s *sectionRepairTarget) WriteAt(p []byte, off int64) (n int, err error) {
-	if off >= s.size { return 0, fmt.Errorf("write out of bounds") }
-	if off+int64(len(p)) > s.size { p = p[:s.size-off] }
+	if off >= s.size {
+		return 0, fmt.Errorf("write out of bounds")
+	}
+	if off+int64(len(p)) > s.size {
+		p = p[:s.size-off]
+	}
 	return s.target.WriteAt(p, off)
 }
 
@@ -39,7 +47,9 @@ func (s *sectionRepairTarget) WriteAt(p []byte, off int64) (n int, err error) {
 // и чинит архив in-place (в том числе многотомный) через unxed/par2.
 func RepairZipArchive(filename string) error {
 	mvr, totalSize, err := zip.OpenMultiVolume(filename, os.O_RDWR)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	defer mvr.Close()
 
 	var parOffset int64
@@ -47,13 +57,19 @@ func RepairZipArchive(filename string) error {
 	buf := make([]byte, 30)
 
 	for off := int64(0); off < totalSize-30; {
-		if _, err := mvr.ReadAt(buf[:4], off); err != nil { break }
+		if _, err := mvr.ReadAt(buf[:4], off); err != nil {
+			break
+		}
 		if binary.LittleEndian.Uint32(buf[:4]) == 0x04034b50 { // LFH Signature
-			if _, err := mvr.ReadAt(buf[4:], off+4); err != nil { break }
+			if _, err := mvr.ReadAt(buf[4:], off+4); err != nil {
+				break
+			}
 			nlen := binary.LittleEndian.Uint16(buf[26:28])
 			elen := binary.LittleEndian.Uint16(buf[28:30])
 			nameBuf := make([]byte, nlen)
-			if _, err := mvr.ReadAt(nameBuf, off+30); err != nil { break }
+			if _, err := mvr.ReadAt(nameBuf, off+30); err != nil {
+				break
+			}
 			if string(nameBuf) == ".recovery.par2" {
 				parOffset = off
 				parSize = int64(binary.LittleEndian.Uint32(buf[18:22]))
@@ -91,11 +107,15 @@ func RepairZipArchive(filename string) error {
 // и чинит архив in-place (в том числе многотомный) через unxed/par2.
 func RepairTarArchive(filename string) error {
 	mvr, totalSize, err := tar.OpenMultiVolume(filename, os.O_RDWR)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	defer mvr.Close()
 
 	method, err := tar.DetectFormat(mvr)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	shadowStart, shadowSize, err := tar.LocateShadowStream(mvr, totalSize, method)
 	if err != nil || shadowSize == 0 {
@@ -118,8 +138,12 @@ func RepairTarArchive(filename string) error {
 	tr := tar.NewReader(sr)
 	for {
 		hdr, err := tr.Next()
-		if err == io.EOF { break }
-		if err != nil { return err }
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
 		if hdr.Name == ".tarext/par2/recovery.par2" {
 			parData = make([]byte, hdr.Size)
 			io.ReadFull(tr, parData)

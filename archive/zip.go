@@ -1,10 +1,10 @@
 package archive
 
 import (
-    "path/filepath"
 	"context"
+	"io"
 	"os"
-    "io"
+	"path/filepath"
 
 	"github.com/unxed/zip"
 )

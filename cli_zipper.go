@@ -1,19 +1,19 @@
 package main
 
 import (
-    "strings"
 	"context"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/unxed/zipper/archive"
 )
 
 type stringSlice []string
 
-func (s *stringSlice) String() string { return strings.Join(*s, ", ") }
+func (s *stringSlice) String() string         { return strings.Join(*s, ", ") }
 func (s *stringSlice) Set(value string) error { *s = append(*s, value); return nil }
 func runZipper(args []string) error {
 	// Предварительный поиск команды среди аргументов (чтобы флаги могли стоять ДО команды)
@@ -34,37 +34,37 @@ func runZipper(args []string) error {
 	fs := flag.NewFlagSet("zipper", flag.ContinueOnError)
 
 	var (
-		outDir         string
-		concurrency    int
-		level          int
-		xattrs         bool
-		splitSizeStr   string
-		solid          bool
-		method         string
-		incremental    bool
-		keepOld        bool
-		keepNewer      bool
-		keepBroken     bool
-		sparse         bool
-		tolerant       bool
-		password       string
-		encryptCD      bool
-		seekChunkSize  int
-		seekContinuous bool
-		indexPath      string
-		embeddedIndex  bool
-		torrentZip     bool
-		recoveryPct    int
-		noPlatformMeta bool
-		noTimes        bool
-		stripComp      int
-		maxFileSize    int64
-		maxRatio       int64
+		outDir           string
+		concurrency      int
+		level            int
+		xattrs           bool
+		splitSizeStr     string
+		solid            bool
+		method           string
+		incremental      bool
+		keepOld          bool
+		keepNewer        bool
+		keepBroken       bool
+		sparse           bool
+		tolerant         bool
+		password         string
+		encryptCD        bool
+		seekChunkSize    int
+		seekContinuous   bool
+		indexPath        string
+		embeddedIndex    bool
+		torrentZip       bool
+		recoveryPct      int
+		noPlatformMeta   bool
+		noTimes          bool
+		stripComp        int
+		maxFileSize      int64
+		maxRatio         int64
 		recoveryExternal bool
-		lock           bool
-		excludes       stringSlice
-		progress       bool
-		trimParents    bool
+		lock             bool
+		excludes         stringSlice
+		progress         bool
+		trimParents      bool
 	)
 
 	fs.Var(&excludes, "exclude", "Exclude files matching pattern")
@@ -131,26 +131,26 @@ func runZipper(args []string) error {
 	}
 
 	opts := archive.Options{
-		SplitSize:      splitSize,
-		Concurrency:    concurrency,
-		Xattrs:         xattrs,
-		Solid:          solid,
-		Method:         method,
-		Level:          level,
-		Incremental:    incremental,
-		KeepOldFiles:   keepOld,
-		KeepNewerFiles: keepNewer,
-		KeepBroken:    keepBroken,
-		Sparse:        sparse,
-		Tolerant:      tolerant,
-		Password:       password,
-		EncryptCD:      encryptCD,
-		SeekChunkSize:  uint32(seekChunkSize),
-		SeekContinuous: seekContinuous,
-		IndexPath:      indexPath,
-		EmbeddedIdx:    embeddedIndex,
-		TorrentZip:     torrentZip,
-		RecoveryPct:    recoveryPct,
+		SplitSize:          splitSize,
+		Concurrency:        concurrency,
+		Xattrs:             xattrs,
+		Solid:              solid,
+		Method:             method,
+		Level:              level,
+		Incremental:        incremental,
+		KeepOldFiles:       keepOld,
+		KeepNewerFiles:     keepNewer,
+		KeepBroken:         keepBroken,
+		Sparse:             sparse,
+		Tolerant:           tolerant,
+		Password:           password,
+		EncryptCD:          encryptCD,
+		SeekChunkSize:      uint32(seekChunkSize),
+		SeekContinuous:     seekContinuous,
+		IndexPath:          indexPath,
+		EmbeddedIdx:        embeddedIndex,
+		TorrentZip:         torrentZip,
+		RecoveryPct:        recoveryPct,
 		NoPlatformMetadata: noPlatformMeta,
 		NoTimes:            noTimes,
 		StripComponents:    stripComp,
@@ -338,7 +338,7 @@ func runZipper(args []string) error {
 		}
 		repairPath := parsedArgs[0]
 		fmt.Printf("Attempting to repair %s...\n", repairPath)
-		
+
 		fmtType := archive.DetectFormat(repairPath)
 		if fmtType == "zip" {
 			// Вызов метода ремонта из нашего адаптера, использующего unxed/par2
