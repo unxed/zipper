@@ -8,7 +8,15 @@ import (
 	"strings"
 )
 
-const Version = "1.0.0"
+var Version = "1.0.0"
+
+func init() {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		if info.Main.Version != "" && info.Main.Version != "(devel)" {
+			Version = info.Main.Version
+		}
+	}
+}
 
 func main() {
 	base := strings.ToLower(filepath.Base(os.Args[0]))
