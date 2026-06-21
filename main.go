@@ -111,7 +111,7 @@ func showHelp(base string) {
 		fmt.Println("  -l             List archive contents")
 		fmt.Println("  -P <password>  Password for decryption")
 	default:
-		fmt.Println("zipper - modern cross-platform archiver")
+		fmt.Printf("zipper %s - modern cross-platform archiver\n", Version)
 		fmt.Println("Usage: zipper <command> [options] <archive> [files...]")
 		fmt.Println("Commands:")
 		fmt.Println("  c              Create archive")
