@@ -222,6 +222,10 @@ func runZipper(args []string) error {
 			opts.PathMapping = pathMapping
 		}
 
+		if err := checkOverwrite(archivePath); err != nil {
+			return err
+		}
+
 		a, err := archive.NewArchiver(archivePath, absChroot, opts)
 		if err != nil {
 			return fmt.Errorf("failed to create archiver: %w", err)

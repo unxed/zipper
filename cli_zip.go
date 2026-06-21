@@ -78,6 +78,10 @@ func runZip(args []string) error {
 		return nil
 	}
 
+	if err := checkOverwrite(archivePath); err != nil {
+		return err
+	}
+
 	a, err := archive.NewArchiver(archivePath, ".", opts)
 	if err != nil {
 		return err
