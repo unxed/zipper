@@ -6,7 +6,7 @@ require (
 	github.com/mholt/archives v0.1.5
 	github.com/unxed/par2 v0.1.2
 	github.com/unxed/tar v0.1.76
-	github.com/unxed/zip v0.1.82
+	github.com/unxed/zip v0.1.83
 )
 
 require (
@@ -33,7 +33,7 @@ require (
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/unxed/localecp v0.1.4 // indirect
 	github.com/unxed/zipcharset v0.1.4 // indirect
-	github.com/unxed/zlib4go v0.1.5 // indirect
+	github.com/unxed/zlib4go v0.1.6 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/sync v0.17.0 // indirect
