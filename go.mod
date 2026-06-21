@@ -41,4 +41,4 @@ require (
 	golang.org/x/text v0.29.0 // indirect
 )
 
-replace github.com/ulikunitz/xz => github.com/unxed/xz v0.1.3
+replace github.com/ulikunitz/xz => github.com/unxed/xz v0.1.4
