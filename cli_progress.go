@@ -39,6 +39,7 @@ func startProgressBar(p archive.Progresser, totalBytes, totalEntries int64, op s
 	if p == nil {
 		return func() {}
 	}
+	fmt.Fprint(os.Stderr, "\033[?25l")
 	done := make(chan struct{})
 	start := time.Now()
 
@@ -53,7 +54,7 @@ func startProgressBar(p archive.Progresser, totalBytes, totalEntries int64, op s
 		for {
 			select {
 			case <-done:
-				fmt.Print("\r" + strings.Repeat(" ", 100) + "\r")
+				fmt.Fprint(os.Stderr, "\r\033[K\033[?25h")
 				return
 			case now := <-ticker.C:
 				bytes, entries := p.Written()
@@ -99,10 +100,7 @@ func startProgressBar(p archive.Progresser, totalBytes, totalEntries int64, op s
 						op, formatBytes(bytes), formatBytes(int64(emaSpeed)), entries)
 				}
 
-				if len(status) > 100 {
-					status = status[:100]
-				}
-				fmt.Fprintf(os.Stderr, "\r%-100s", status)
+				fmt.Fprintf(os.Stderr, "\r\033[K%s", status)
 
 				lastBytes = bytes
 				lastTime = now
