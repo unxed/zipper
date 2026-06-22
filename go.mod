@@ -33,6 +33,7 @@ require (
 	github.com/tetratelabs/wazero v1.8.2 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/unxed/localecp v0.1.4 // indirect
+	github.com/unxed/xz v0.1.8 // indirect
 	github.com/unxed/zipcharset v0.1.4 // indirect
 	github.com/unxed/zlib4go v0.1.11 // indirect
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
@@ -42,8 +43,8 @@ require (
 	golang.org/x/text v0.37.0 // indirect
 )
 
-replace github.com/ulikunitz/xz => github.com/unxed/xz v0.1.5
+// replace github.com/ulikunitz/xz => github.com/unxed/xz v0.1.8
 
-replace github.com/mholt/archives => github.com/unxed/archives v0.0.0-20260622164709-bf36c36036c8
+replace github.com/mholt/archives => github.com/unxed/archives v0.0.0-20260622214837-d5c5294ec625
 
-replace github.com/bodgit/sevenzip => github.com/unxed/sevenzip v0.0.0-20260622210657-3f59e779ae55
+replace github.com/bodgit/sevenzip => github.com/unxed/sevenzip v0.0.0-20260622215004-8b967f0d6c8c
