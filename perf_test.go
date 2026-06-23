@@ -76,8 +76,10 @@ func BenchmarkPerformance(b *testing.B) {
 
 	tmp := b.TempDir()
 	largeFileDir := filepath.Join(tmp, "large_data")
-	const fileSize = 100 * 1024 * 1024 // 100 MB
-	generateFiles(b, largeFileDir, 1, fileSize)
+	const totalSize = 100 * 1024 * 1024 // 100 MB total
+	const fileCount = 5
+	const fileSize = totalSize / fileCount
+	generateFiles(b, largeFileDir, fileCount, fileSize)
 
 	// Предварительно создаем эталонные архивы для тестов распаковки
 	zipArc := filepath.Join(tmp, "ref.zip")
@@ -93,36 +95,37 @@ func BenchmarkPerformance(b *testing.B) {
 	if p7z != "" {
 		sevenZipArc = filepath.Join(tmp, "ref.7z")
 		os.Remove(sevenZipArc)
-		exec.Command(p7z, "a", "-t7z", "-m0=lzma2", sevenZipArc, filepath.Join(largeFileDir, "*")).Run()
+		// Создаем многопоточный не-солид архив (-ms=off) из 5 независимых файлов
+		exec.Command(p7z, "a", "-t7z", "-m0=lzma2", "-ms=off", sevenZipArc, filepath.Join(largeFileDir, "*")).Run()
 	}
 
 	// ==========================================
 	// --- 1. ZIP (Deflate) ---
 	// ==========================================
 	b.Run("ZIP_Pack_Zipper", func(b *testing.B) {
-		b.SetBytes(fileSize)
+		b.SetBytes(totalSize)
 		for i := 0; i < b.N; i++ {
 			arc := filepath.Join(tmp, "perf.zip")
 			os.Remove(arc)
 			runZipper([]string{"zipper", "c", "-m", "deflate", "-C", largeFileDir, arc, "."})
-			reportStats(b, arc, fileSize)
+			reportStats(b, arc, totalSize)
 		}
 	})
 
 	if p7z != "" {
 		b.Run("ZIP_Pack_Native_7z", func(b *testing.B) {
-			b.SetBytes(fileSize)
+			b.SetBytes(totalSize)
 			for i := 0; i < b.N; i++ {
 				arc := filepath.Join(tmp, "perf_7z.zip")
 				os.Remove(arc)
 				exec.Command(p7z, "a", "-tzip", "-mm=Deflate", arc, filepath.Join(largeFileDir, "*")).Run()
-				reportStats(b, arc, fileSize)
+				reportStats(b, arc, totalSize)
 			}
 		})
 	}
 
 	b.Run("ZIP_Unpack_Zipper", func(b *testing.B) {
-		b.SetBytes(fileSize)
+		b.SetBytes(totalSize)
 		for i := 0; i < b.N; i++ {
 			out := filepath.Join(tmp, "out_zip_zpr")
 			os.RemoveAll(out)
@@ -132,7 +135,7 @@ func BenchmarkPerformance(b *testing.B) {
 
 	if p7z != "" {
 		b.Run("ZIP_Unpack_Native_7z", func(b *testing.B) {
-			b.SetBytes(fileSize)
+			b.SetBytes(totalSize)
 			for i := 0; i < b.N; i++ {
 				out := filepath.Join(tmp, "out_zip_7z")
 				os.RemoveAll(out)
@@ -145,29 +148,29 @@ func BenchmarkPerformance(b *testing.B) {
 	// --- 2. TAR.GZ (Gzip) ---
 	// ==========================================
 	b.Run("TGZ_Pack_Zipper", func(b *testing.B) {
-		b.SetBytes(fileSize)
+		b.SetBytes(totalSize)
 		for i := 0; i < b.N; i++ {
 			arc := filepath.Join(tmp, "perf.tar.gz")
 			os.Remove(arc)
 			runZipper([]string{"zipper", "c", "-m", "gzip", "-C", largeFileDir, arc, "."})
-			reportStats(b, arc, fileSize)
+			reportStats(b, arc, totalSize)
 		}
 	})
 
 	if pTar != "" {
 		b.Run("TGZ_Pack_Native_Tar", func(b *testing.B) {
-			b.SetBytes(fileSize)
+			b.SetBytes(totalSize)
 			for i := 0; i < b.N; i++ {
 				arc := filepath.Join(tmp, "perf_tar.tar.gz")
 				os.Remove(arc)
 				exec.Command(pTar, "-czf", arc, "-C", largeFileDir, ".").Run()
-				reportStats(b, arc, fileSize)
+				reportStats(b, arc, totalSize)
 			}
 		})
 	}
 
 	b.Run("TGZ_Unpack_Zipper", func(b *testing.B) {
-		b.SetBytes(fileSize)
+		b.SetBytes(totalSize)
 		for i := 0; i < b.N; i++ {
 			out := filepath.Join(tmp, "out_tgz_zpr")
 			os.RemoveAll(out)
@@ -177,7 +180,7 @@ func BenchmarkPerformance(b *testing.B) {
 
 	if pTar != "" {
 		b.Run("TGZ_Unpack_Native_Tar", func(b *testing.B) {
-			b.SetBytes(fileSize)
+			b.SetBytes(totalSize)
 			for i := 0; i < b.N; i++ {
 				out := filepath.Join(tmp, "out_tgz_tar")
 				os.RemoveAll(out)
@@ -191,12 +194,12 @@ func BenchmarkPerformance(b *testing.B) {
 	// --- 3. TAR.ZST (Zstandard) ---
 	// ==========================================
 	b.Run("ZST_Pack_Zipper", func(b *testing.B) {
-		b.SetBytes(fileSize)
+		b.SetBytes(totalSize)
 		for i := 0; i < b.N; i++ {
 			arc := filepath.Join(tmp, "perf.tar.zst")
 			os.Remove(arc)
 			runZipper([]string{"zipper", "c", "-m", "zstd", "-C", largeFileDir, arc, "."})
-			reportStats(b, arc, fileSize)
+			reportStats(b, arc, totalSize)
 		}
 	})
 
@@ -210,19 +213,19 @@ func BenchmarkPerformance(b *testing.B) {
 				b.Skip("system tar does not support --zstd option")
 			}
 
-			b.SetBytes(fileSize)
+			b.SetBytes(totalSize)
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				arc := filepath.Join(tmp, "perf_tar.tar.zst")
 				os.Remove(arc)
 				exec.Command(pTar, "--zstd", "-cf", arc, "-C", largeFileDir, ".").Run()
-				reportStats(b, arc, fileSize)
+				reportStats(b, arc, totalSize)
 			}
 		})
 	}
 
 	b.Run("ZST_Unpack_Zipper", func(b *testing.B) {
-		b.SetBytes(fileSize)
+		b.SetBytes(totalSize)
 		for i := 0; i < b.N; i++ {
 			out := filepath.Join(tmp, "out_zst_zpr")
 			os.RemoveAll(out)
@@ -241,7 +244,7 @@ func BenchmarkPerformance(b *testing.B) {
 				b.Skip("system tar does not support --zstd option")
 			}
 
-			b.SetBytes(fileSize)
+			b.SetBytes(totalSize)
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				out := filepath.Join(tmp, "out_zst_tar")
@@ -256,30 +259,31 @@ func BenchmarkPerformance(b *testing.B) {
 	// --- 4. 7Z (LZMA2) ---
 	// ==========================================
 	b.Run("7Z_Pack_Zipper", func(b *testing.B) {
-		b.SetBytes(fileSize)
+		b.SetBytes(totalSize)
 		for i := 0; i < b.N; i++ {
 			arc := filepath.Join(tmp, "perf.7z")
 			os.Remove(arc)
 			// Упаковываем в 7z силами Zipper (через fallback-архиватор mholt/archives)
 			runZipper([]string{"zipper", "c", "-C", largeFileDir, arc, "."})
-			reportStats(b, arc, fileSize)
+			reportStats(b, arc, totalSize)
 		}
 	})
 
 	if p7z != "" {
 		b.Run("7Z_Pack_Native_7z", func(b *testing.B) {
-			b.SetBytes(fileSize)
+			b.SetBytes(totalSize)
 			for i := 0; i < b.N; i++ {
 				arc := filepath.Join(tmp, "perf_7z.7z")
 				os.Remove(arc)
-				exec.Command(p7z, "a", "-t7z", "-m0=lzma2", arc, filepath.Join(largeFileDir, "*")).Run()
-				reportStats(b, arc, fileSize)
+				// Для честного сравнения пакуем без солид-блоков (-ms=off)
+				exec.Command(p7z, "a", "-t7z", "-m0=lzma2", "-ms=off", arc, filepath.Join(largeFileDir, "*")).Run()
+				reportStats(b, arc, totalSize)
 			}
 		})
 	}
 
 	b.Run("7Z_Unpack_Zipper", func(b *testing.B) {
-		b.SetBytes(fileSize)
+		b.SetBytes(totalSize)
 		for i := 0; i < b.N; i++ {
 			out := filepath.Join(tmp, "out_7z_zpr")
 			os.RemoveAll(out)
@@ -289,7 +293,7 @@ func BenchmarkPerformance(b *testing.B) {
 
 	if p7z != "" {
 		b.Run("7Z_Unpack_Native_7z", func(b *testing.B) {
-			b.SetBytes(fileSize)
+			b.SetBytes(totalSize)
 			for i := 0; i < b.N; i++ {
 				out := filepath.Join(tmp, "out_7z_7z")
 				os.RemoveAll(out)
