@@ -3,7 +3,7 @@ module github.com/unxed/zipper
 go 1.25.5
 
 require (
-	github.com/unxed/archives v0.0.0-20260623134235-eabdd0f9a8a3
+	github.com/unxed/archives v0.0.0-20260623134855-4d66469913f8
 	github.com/unxed/par2 v0.1.2
 	github.com/unxed/tar v0.1.78
 	github.com/unxed/zip v0.1.86
