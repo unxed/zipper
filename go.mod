@@ -42,9 +42,3 @@ require (
 	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 )
-
-// replace github.com/ulikunitz/xz => github.com/unxed/xz v0.1.8
-
-replace github.com/mholt/archives => github.com/unxed/archives v0.0.0-20260622214837-d5c5294ec625
-
-replace github.com/bodgit/sevenzip => github.com/unxed/sevenzip v0.0.0-20260622215004-8b967f0d6c8c
