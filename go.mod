@@ -3,10 +3,10 @@ module github.com/unxed/zipper
 go 1.25.5
 
 require (
-	github.com/unxed/archives v0.0.0-20260623134235-eabdd0f9a8a3
+	github.com/unxed/archives v0.0.0-20260625190559-e322031fd3f5
 	github.com/unxed/par2 v0.1.2
-	github.com/unxed/tar v0.1.78
-	github.com/unxed/zip v0.1.86
+	github.com/unxed/tar v0.1.94
+	github.com/unxed/zip v0.1.103
 )
 
 require (
@@ -32,8 +32,8 @@ require (
 	github.com/tetratelabs/wazero v1.8.2 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/unxed/localecp v0.1.4 // indirect
-	github.com/unxed/sevenzip v0.0.0-20260623133906-0d07a51a4eef // indirect
-	github.com/unxed/xz v0.1.8 // indirect
+	github.com/unxed/sevenzip v0.0.0-20260625190452-b3a9b1c79a45 // indirect
+	github.com/unxed/xz v0.1.22 // indirect
 	github.com/unxed/zipcharset v0.1.4 // indirect
 	github.com/unxed/zlib4go v0.1.11 // indirect
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
@@ -43,8 +43,14 @@ require (
 	golang.org/x/text v0.37.0 // indirect
 )
 
-// replace github.com/ulikunitz/xz => github.com/unxed/xz v0.1.8
+// replace github.com/ebitengine/purego => github.com/unxed/pureffi v0.1.10
 
-replace github.com/mholt/archives => github.com/unxed/archives v0.0.0-20260622214837-d5c5294ec625
+// replace github.com/unxed/archives => ../archives
 
-replace github.com/bodgit/sevenzip => github.com/unxed/sevenzip v0.0.0-20260622215004-8b967f0d6c8c
+// replace github.com/unxed/sevenzip => ../sevenzip
+
+// replace github.com/unxed/tar => ../tar
+
+// replace github.com/unxed/zip => ../zip
+
+// replace github.com/unxed/xz => ../xz
