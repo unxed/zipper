@@ -71,6 +71,37 @@ Ensure you have Go (1.25 or newer) installed:
 git clone --recursive https://github.com/unxed/f4.git
 cd f4/zipper
 go build -o zipper .
+## Performance & Benchmarking
+
+`zipper` includes a built-in benchmarking suite to compare its performance against native system utilities (`zip`, `unzip`, `tar`, `7z`).
+
+The benchmarks run directly against the source code, so no manual binary build is required:
+
+```bash
+# Standard benchmark (Short mode) — takes a few seconds
+go test -bench . -benchmem
+
+# Comprehensive matrix (Full mode) — tests various data types and sizes
+ZIPPER_BENCH_FULL=1 go test -bench . -benchmem
+```
+
+### Metrics
+The benchmark provides detailed statistics for each operation:
+*   **Speed (MB/s):** Throughput of data processing.
+*   **%_ratio:** Compression ratio (archive size relative to the original size).
+*   **B/op:** Memory allocation per iteration.
+
+### Data Profiles
+Benchmarks automatically generate three types of datasets to simulate real-world usage:
+1.  **Mixed:** A blend of text, zeroes, and random data (balanced scenario).
+2.  **Text:** High redundancy (logs, source code) to test the limits of compression algorithms.
+3.  **Rand:** Incompressible data (encrypted files, media) to test CPU efficiency and raw I/O.
+
+### Comparison Logic
+The suite compares `zipper` internal functions directly against installed system binaries:
+*   `zip` / `unzip` (Deflate)
+*   `tar` (`--zstd`)
+*   `7z` (LZMA2, both Solid and Non-solid modes)
 ```
 
 ### Activating Mimicry Mode
