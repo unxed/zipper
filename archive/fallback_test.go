@@ -47,6 +47,39 @@ func TestFallbackEngine(t *testing.T) {
 	}
 }
 
+func TestFallbackEngine_7z(t *testing.T) {
+	tmp := t.TempDir()
+	src := filepath.Join(tmp, "src")
+	dst := filepath.Join(tmp, "dst")
+	os.MkdirAll(src, 0755)
+	os.WriteFile(filepath.Join(src, "sevenzip.txt"), []byte("native 7z via fallback"), 0644)
+
+	arc := filepath.Join(tmp, "test_fallback.7z")
+	a, err := NewFallbackArchiver(arc, src, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	info, _ := os.Stat(filepath.Join(src, "sevenzip.txt"))
+	a.Archive(context.Background(), map[string]os.FileInfo{filepath.Join(src, "sevenzip.txt"): info})
+	a.Close()
+
+	os.MkdirAll(dst, 0755)
+	e, err := NewFallbackExtractor(arc, dst, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Extract(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	e.Close()
+
+	b, _ := os.ReadFile(filepath.Join(dst, "sevenzip.txt"))
+	if string(b) != "native 7z via fallback" {
+		t.Errorf("expected 'native 7z via fallback', got %q", string(b))
+	}
+}
+
 type fallbackMockFileInfo struct {
 	name string
 	mode os.FileMode

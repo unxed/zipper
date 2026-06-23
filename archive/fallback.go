@@ -3,7 +3,7 @@ package archive
 import (
 	"context"
 	"fmt"
-	"github.com/mholt/archives"
+	"github.com/unxed/archives"
 	"io"
 	"io/fs"
 	"os"
@@ -113,6 +113,8 @@ func NewFallbackArchiver(filename, chroot string, opts Options) (Archiver, error
 		format = archives.CompressedArchive{Compression: archives.Gz{}}
 	} else if strings.HasSuffix(lower, ".zip") {
 		format = archives.Zip{}
+	} else if strings.HasSuffix(lower, ".7z") {
+		format = archives.SevenZip{}
 	} else if filename == "-" {
 		format = archives.CompressedArchive{Compression: archives.Gz{}, Archival: archives.Tar{}}
 	} else {

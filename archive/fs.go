@@ -6,7 +6,7 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/mholt/archives"
+	"github.com/unxed/archives"
 	"github.com/unxed/tar"
 	"github.com/unxed/zip"
 )
