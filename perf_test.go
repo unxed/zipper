@@ -265,7 +265,7 @@ func BenchmarkPerformance(b *testing.B) {
 			if p7z != "" {
 				runTest(b, "7Z_Native_Solid", false, []string{p7z, "a", "-t7z", "-ms=on", "-bso0"}, []string{p7z})
 			}
-			runTest(b, "7Z_Internal", true, []string{"zipper", "c"}, []string{"zipper", "x"})
+			runTest(b, "7Z_Internal_Solid", true, []string{"zipper", "c", "-solid"}, []string{"zipper", "x"})
 		})
 	}
 }
