@@ -253,14 +253,14 @@ func BenchmarkPerformance(b *testing.B) {
 			}
 
 			// 1. ZIP (Internal vs Native)
-			runTest(b, "ZIP_Internal", true, []string{"zip", "-1"}, []string{"unzip"})
+			runTest(b, "ZIP_Zipper", true, []string{"zip", "-1"}, []string{"unzip"})
 			if pZip != "" && pUnzip != "" {
 				runTest(b, "ZIP_Native", false, []string{pZip, "-q", "-r", "-1"}, []string{pUnzip})
 			}
 
 			// 2. Zipper Advanced (Internal)
-			runTest(b, "Zipper_Solid_Zstd", true, []string{"zipper", "c", "-solid", "-l", "1", "-m", "zstd"}, []string{"zipper", "x"})
-			runTest(b, "Zipper_Solid_Chunked", true, []string{"zipper", "c", "-solid", "-l", "1", "-seek-chunk", "1048576", "-m", "zstd"}, []string{"zipper", "x"})
+			runTest(b, "ZSTD_Zipper_Solid", true, []string{"zipper", "c", "-solid", "-l", "1", "-m", "zstd"}, []string{"zipper", "x"})
+			runTest(b, "ZSTD_Zipper_Chunked", true, []string{"zipper", "c", "-solid", "-l", "1", "-seek-chunk", "1048576", "-m", "zstd"}, []string{"zipper", "x"})
 
 			// 3. TAR (Internal vs Native)
 			runTest(b, "TAR_Internal", true, []string{"tar", "--zstd", "-cf"}, []string{"tar"})
@@ -273,8 +273,8 @@ func BenchmarkPerformance(b *testing.B) {
 				runTest(b, "7Z_Native_Solid", false, []string{p7z, "a", "-t7z", "-ms=on", "-bso0"}, []string{p7z})
 				runTest(b, "7Z_Native_Files", false, []string{p7z, "a", "-t7z", "-ms=off", "-bso0"}, []string{p7z})
 			}
-			runTest(b, "7Z_Internal_Solid", true, []string{"zipper", "c", "-solid"}, []string{"zipper", "x"})
-			runTest(b, "7Z_Internal_Files", true, []string{"zipper", "c"}, []string{"zipper", "x"})
+			runTest(b, "7Z_Zipper_Solid", true, []string{"zipper", "c", "-solid"}, []string{"zipper", "x"})
+			runTest(b, "7Z_Zipper_Files", true, []string{"zipper", "c"}, []string{"zipper", "x"})
 		})
 	}
 }
