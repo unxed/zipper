@@ -126,6 +126,13 @@ func BenchmarkPerformance(b *testing.B) {
 	p7z, _ := exec.LookPath("7z")
 
 	isFull := os.Getenv("ZIPPER_BENCH_FULL") == "1"
+	warmupTmp := b.TempDir()
+	warmupSrc := filepath.Join(warmupTmp, "warmup_src")
+	_ = os.MkdirAll(warmupSrc, 0755)
+	_ = os.WriteFile(filepath.Join(warmupSrc, "warmup.txt"), make([]byte, 1024*1024), 0644)
+	warmupArc := filepath.Join(warmupTmp, "warmup.zip")
+	_ = runInternal([]string{"zipper", "c", "-solid", "-C", warmupSrc, warmupArc, "warmup.txt"})
+	_ = os.RemoveAll(warmupTmp)
 
 	datasets := []DatasetDef{
 		{Name: "100_Files_x_1MB_Mixed", FileCount: 100, TotalSize: 100 * 1024 * 1024, DataProfile: ProfileMixed},
