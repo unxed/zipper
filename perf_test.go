@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,6 +24,26 @@ type DatasetDef struct {
 	DataProfile DataProfile
 }
 
+// Вспомогательные генераторы данных (очень быстрый LCG алгоритм)
+func fastRandBytes(seed *uint32, buf []byte) {
+	s := *seed
+	for i := 0; i < len(buf); i++ {
+		s = s*1664525 + 1013904223
+		buf[i] = byte(s >> 24)
+	}
+	*seed = s
+}
+
+func fastTextBytes(seed *uint32, buf []byte) {
+	s := *seed
+	const alphabet = "abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 0123456789 \n\t" // 64 chars = 6 bits entropy
+	for i := 0; i < len(buf); i++ {
+		s = s*1664525 + 1013904223
+		buf[i] = alphabet[(s>>24)&63]
+	}
+	*seed = s
+}
+
 func generateDataset(b *testing.B, dir string, def DatasetDef) {
 	os.MkdirAll(dir, 0755)
 	fileSize := def.TotalSize / int64(def.FileCount)
@@ -32,22 +51,17 @@ func generateDataset(b *testing.B, dir string, def DatasetDef) {
 		fileSize = 1
 	}
 
-	rnd := rand.New(rand.NewSource(42))
-	chunkSize := 64 * 1024
-	textChunk := make([]byte, chunkSize)
-	randChunk := make([]byte, chunkSize * 2)
-	zeroChunk := make([]byte, chunkSize)
-
-	rnd.Read(randChunk)
-	for i := range textChunk {
-		if i%12 == 0 {
-			textChunk[i] = '\n'
-		} else if i%5 == 0 {
-			textChunk[i] = ' '
-		} else {
-			textChunk[i] = 'a' + byte(i%26)
-		}
+	// Общая часть для симуляции Solid-сжатия (общие заголовки, импорты в исходниках)
+	commonSize := fileSize / 2
+	if commonSize > 64*1024 {
+		commonSize = 64 * 1024 // Максимум 64KB общего префикса на файл
 	}
+	commonText := make([]byte, commonSize)
+	seed := uint32(42)
+	fastTextBytes(&seed, commonText)
+
+	chunkSize := 1024 * 1024 // 1MB буфер для записи
+	chunk := make([]byte, chunkSize)
 
 	for i := 0; i < def.FileCount; i++ {
 		path := filepath.Join(dir, fmt.Sprintf("file_%05d.dat", i))
@@ -55,31 +69,45 @@ func generateDataset(b *testing.B, dir string, def DatasetDef) {
 		if err != nil {
 			b.Fatal(err)
 		}
+
+		fileSeed := uint32(1337 + i*7919) // Уникальный seed для каждого файла
+
 		var written int64
 		for written < fileSize {
 			todo := fileSize - written
 			if todo > int64(chunkSize) {
 				todo = int64(chunkSize)
 			}
-			var chunk []byte
+			c := chunk[:todo]
+
 			switch def.DataProfile {
-			case ProfileText:
-				chunk = textChunk[:todo]
 			case ProfileRand:
-				offset := (i + int(written)) % chunkSize
-				chunk = randChunk[offset : offset+int(todo)]
+				// 100% непредсказуемые несжимаемые данные
+				fastRandBytes(&fileSeed, c)
+			case ProfileText:
+				// Уникальный текст + общая вставка для тестирования Solid-режима
+				fastTextBytes(&fileSeed, c)
+				if written == 0 && len(c) >= len(commonText) {
+					copy(c, commonText)
+				}
 			case ProfileMixed:
-				rem := (i + int(written)) % 3
+				rem := i % 3
 				if rem == 0 {
-					chunk = textChunk[:todo]
+					fastTextBytes(&fileSeed, c)
+					if written == 0 && len(c) >= len(commonText) {
+						copy(c, commonText)
+					}
 				} else if rem == 1 {
-					chunk = zeroChunk[:todo]
+					for j := range c {
+						c[j] = 0 // Идеально сжимаемые нули
+					}
 				} else {
-					chunk = randChunk[:todo]
+					fastRandBytes(&fileSeed, c) // Абсолютно несжимаемый мусор
 				}
 			}
-			f.Write(chunk)
-			written += int64(len(chunk))
+
+			f.Write(c)
+			written += int64(len(c))
 		}
 		f.Close()
 	}
