@@ -10,6 +10,14 @@ import (
 	"path/filepath"
 	"strings"
 )
+import "sync"
+
+var fallbackCopyBufPool = sync.Pool{
+	New: func() interface{} {
+		b := make([]byte, 256*1024)
+		return &b
+	},
+}
 
 type fallbackExtractor struct {
 	filename string
@@ -80,8 +88,10 @@ func (e *fallbackExtractor) Extract(ctx context.Context) error {
 		}
 		defer in.Close()
 
-		copyBuf := make([]byte, 256*1024)
-		_, err = io.CopyBuffer(out, in, copyBuf)
+		bufPtr := fallbackCopyBufPool.Get().(*[]byte)
+		defer fallbackCopyBufPool.Put(bufPtr)
+
+		_, err = io.CopyBuffer(out, in, *bufPtr)
 		return err
 	})
 }
