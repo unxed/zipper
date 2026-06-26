@@ -3,7 +3,7 @@ module github.com/unxed/zipper
 go 1.25.5
 
 require (
-	github.com/unxed/archives v0.0.0-20260626170352-87ab68314bd7
+	github.com/unxed/archives v0.0.0-20260626170948-6bf3784cb90b
 	github.com/unxed/par2 v0.1.2
 	github.com/unxed/tar v0.1.97
 	github.com/unxed/zip v0.1.105
@@ -20,7 +20,6 @@ require (
 	github.com/klauspost/compress v1.18.7-0.20260521203646-ecdb779d8745 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.3 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
-	github.com/mikelolasagasti/xz v1.0.1 // indirect
 	github.com/minio/minlz v1.1.1 // indirect
 	github.com/ncruces/go-sqlite3 v0.22.0 // indirect
 	github.com/ncruces/julianday v1.0.0 // indirect
