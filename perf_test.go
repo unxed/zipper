@@ -27,9 +27,14 @@ type DatasetDef struct {
 // Вспомогательные генераторы данных (очень быстрый LCG алгоритм)
 func fastRandBytes(seed *uint32, buf []byte) {
 	s := *seed
+	if s == 0 {
+		s = 1 // Xorshift32 не должен инициализироваться нулем
+	}
 	for i := 0; i < len(buf); i++ {
-		s = s*1664525 + 1013904223
-		buf[i] = byte(s >> 24)
+		s ^= s << 13
+		s ^= s >> 17
+		s ^= s << 5
+		buf[i] = byte(s)
 	}
 	*seed = s
 }
