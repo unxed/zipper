@@ -226,7 +226,63 @@ func BenchmarkPerformance(b *testing.B) {
 				UnpackArgs: []string{"unzip"},
 			})
 
-			// 2. ZIP Advanced (Zstd, Solid/Chunked)
+			// 3. TAR (Zstd and Gzip) - Native vs Zipper
+			if pTar != "" {
+				tools = append(tools, ToolDef{
+					Name:       "TAR_ZSTD_Native",
+					IsInternal: false,
+					PackArgs:   []string{pTar, "--zstd", "-cf"},
+					UnpackArgs: []string{pTar},
+				})
+    			tools = append(tools, ToolDef{
+    				Name:       "TAR_ZSTD_Zipper",
+    				IsInternal: true,
+    				PackArgs:   []string{"tar", "--zstd", "-cf"},
+    				UnpackArgs: []string{"tar"},
+    			})
+				tools = append(tools, ToolDef{
+					Name:       "TAR_GZIP_Native",
+					IsInternal: false,
+					PackArgs:   []string{pTar, "-czf"},
+					UnpackArgs: []string{pTar},
+				})
+    			tools = append(tools, ToolDef{
+    				Name:       "TAR_GZIP_Zipper",
+    				IsInternal: true,
+    				PackArgs:   []string{"tar", "-czf"},
+    				UnpackArgs: []string{"tar"},
+    			})
+			}
+
+			// 4. 7Z (LZMA) - Native vs Zipper (Solid & Non-Solid)
+			if p7z != "" {
+				tools = append(tools, ToolDef{
+					Name:       "7Z_LZMA_Native_Solid",
+					IsInternal: false,
+					PackArgs:   []string{p7z, "a", "-t7z", "-ms=on", "-bso0"},
+					UnpackArgs: []string{p7z},
+				})
+    			tools = append(tools, ToolDef{
+    				Name:       "7Z_LZMA_Zipper_Solid",
+    				IsInternal: true,
+    				PackArgs:   []string{"zipper", "c", "-solid"},
+    				UnpackArgs: []string{"zipper", "x"},
+    			})
+				tools = append(tools, ToolDef{
+					Name:       "7Z_LZMA_Native_Files",
+					IsInternal: false,
+					PackArgs:   []string{p7z, "a", "-t7z", "-ms=off", "-bso0"},
+					UnpackArgs: []string{p7z},
+				})
+    			tools = append(tools, ToolDef{
+    				Name:       "7Z_LZMA_Zipper_Files",
+    				IsInternal: true,
+    				PackArgs:   []string{"zipper", "c", "-non-solid"},
+    				UnpackArgs: []string{"zipper", "x"},
+    			})
+			}
+
+			// 5. ZIP Advanced (Zstd, Solid/Chunked)
 			tools = append(tools, ToolDef{
 				Name:       "ZIP_ZSTD_Zipper_Solid",
 				IsInternal: true,
@@ -237,65 +293,6 @@ func BenchmarkPerformance(b *testing.B) {
 				Name:       "ZIP_ZSTD_Zipper_Chunked",
 				IsInternal: true,
 				PackArgs:   []string{"zipper", "c", "-solid", "-l", "1", "-seek-chunk", "1048576", "-m", "zstd"},
-				UnpackArgs: []string{"zipper", "x"},
-			})
-
-			// 3. TAR (Zstd and Gzip) - Native vs Zipper
-			if pTar != "" {
-				tools = append(tools, ToolDef{
-					Name:       "TAR_ZSTD_Native",
-					IsInternal: false,
-					PackArgs:   []string{pTar, "--zstd", "-cf"},
-					UnpackArgs: []string{pTar},
-				})
-				tools = append(tools, ToolDef{
-					Name:       "TAR_GZIP_Native",
-					IsInternal: false,
-					PackArgs:   []string{pTar, "-czf"},
-					UnpackArgs: []string{pTar},
-				})
-			}
-			tools = append(tools, ToolDef{
-				Name:       "TAR_ZSTD_Zipper",
-				IsInternal: true,
-				PackArgs:   []string{"tar", "--zstd", "-cf"},
-				UnpackArgs: []string{"tar"},
-			})
-			tools = append(tools, ToolDef{
-				Name:       "TAR_GZIP_Zipper",
-				IsInternal: true,
-				PackArgs:   []string{"tar", "-czf"},
-				UnpackArgs: []string{"tar"},
-			})
-
-			// 4. 7Z (LZMA) - Native vs Zipper (Solid & Non-Solid)
-			if p7z != "" {
-				tools = append(tools, ToolDef{
-					Name:       "7Z_LZMA_Native_Solid",
-					IsInternal: false,
-					PackArgs:   []string{p7z, "a", "-t7z", "-ms=on", "-bso0"},
-					UnpackArgs: []string{p7z},
-				})
-			}
-			tools = append(tools, ToolDef{
-				Name:       "7Z_LZMA_Zipper_Solid",
-				IsInternal: true,
-				PackArgs:   []string{"zipper", "c", "-solid"},
-				UnpackArgs: []string{"zipper", "x"},
-			})
-
-			if p7z != "" {
-				tools = append(tools, ToolDef{
-					Name:       "7Z_LZMA_Native_Files",
-					IsInternal: false,
-					PackArgs:   []string{p7z, "a", "-t7z", "-ms=off", "-bso0"},
-					UnpackArgs: []string{p7z},
-				})
-			}
-			tools = append(tools, ToolDef{
-				Name:       "7Z_LZMA_Zipper_Files",
-				IsInternal: true,
-				PackArgs:   []string{"zipper", "c", "-non-solid"},
 				UnpackArgs: []string{"zipper", "x"},
 			})
 
