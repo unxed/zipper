@@ -86,7 +86,6 @@ func runZip(args []string) error {
 	if err != nil {
 		return err
 	}
-	defer a.Close()
 
 	fMap := make(map[string]os.FileInfo)
 	var totalBytes, totalEntries int64
@@ -112,6 +111,7 @@ func runZip(args []string) error {
 			return err
 		})
 		if err != nil {
+			a.Close()
 			return err
 		}
 	}
@@ -119,9 +119,14 @@ func runZip(args []string) error {
 	if progress {
 		stopProgress = startProgressBar(a, totalBytes, totalEntries, "Archiving")
 	}
-	err = a.Archive(context.Background(), fMap)
+	archiveErr := a.Archive(context.Background(), fMap)
 	if stopProgress != nil {
 		stopProgress()
 	}
-	return err
+
+	closeErr := a.Close()
+	if archiveErr != nil {
+		return archiveErr
+	}
+	return closeErr
 }

@@ -62,15 +62,19 @@ func runUnzip(args []string) error {
 	if err != nil {
 		return err
 	}
-	defer e.Close()
 
 	var stopProgress func()
 	if progress {
 		stopProgress = startProgressBar(e, 0, 0, "Extracting")
 	}
-	err = e.Extract(context.Background())
+	extractErr := e.Extract(context.Background())
 	if stopProgress != nil {
 		stopProgress()
 	}
-	return err
+
+	closeErr := e.Close()
+	if extractErr != nil {
+		return extractErr
+	}
+	return closeErr
 }

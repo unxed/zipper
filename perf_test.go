@@ -283,7 +283,7 @@ func BenchmarkPerformance(b *testing.B) {
 			tools = append(tools, ToolDef{
 				Name:       "7Z_LZMA_Zipper_Files",
 				IsInternal: true,
-				PackArgs:   []string{"zipper", "c"},
+				PackArgs:   []string{"zipper", "c", "-non-solid"},
 				UnpackArgs: []string{"zipper", "x"},
 			})
 

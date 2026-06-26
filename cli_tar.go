@@ -121,7 +121,6 @@ func runTar(args []string) error {
 		if err != nil {
 			return err
 		}
-		defer a.Close()
 
 		fMap := make(map[string]os.FileInfo)
 		var totalBytes, totalEntries int64
@@ -147,6 +146,7 @@ func runTar(args []string) error {
 				return err
 			})
 			if err != nil {
+				a.Close()
 				return err
 			}
 		}
@@ -154,26 +154,36 @@ func runTar(args []string) error {
 		if progress {
 			stopProgress = startProgressBar(a, totalBytes, totalEntries, "Archiving")
 		}
-		err = a.Archive(context.Background(), fMap)
+		archiveErr := a.Archive(context.Background(), fMap)
 		if stopProgress != nil {
 			stopProgress()
 		}
-		return err
+
+		closeErr := a.Close()
+		if archiveErr != nil {
+			return archiveErr
+		}
+		return closeErr
 	} else if mode == "x" {
 		e, err := archive.NewExtractor(archivePath, ".", opts)
 		if err != nil {
 			return err
 		}
-		defer e.Close()
+
 		var stopProgress func()
 		if progress {
 			stopProgress = startProgressBar(e, 0, 0, "Extracting")
 		}
-		err = e.Extract(context.Background())
+		extractErr := e.Extract(context.Background())
 		if stopProgress != nil {
 			stopProgress()
 		}
-		return err
+
+		closeErr := e.Close()
+		if extractErr != nil {
+			return extractErr
+		}
+		return closeErr
 	} else if mode == "r" {
 		u, err := archive.NewUpdater(archivePath, opts)
 		if err != nil {

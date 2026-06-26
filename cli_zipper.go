@@ -40,6 +40,7 @@ func runZipper(args []string) error {
 		xattrs           bool
 		splitSizeStr     string
 		solid            bool
+		nonSolid         bool
 		method           string
 		incremental      bool
 		keepOld          bool
@@ -79,6 +80,7 @@ func runZipper(args []string) error {
 	fs.BoolVar(&seekContinuous, "seek-continuous", false, "Use continuous seek index (GZIDX) instead of chunked (SOZip)")
 	fs.BoolVar(&xattrs, "xattrs", false, "Preserve xattrs")
 	fs.BoolVar(&solid, "solid", false, "Use solid compression (zip)")
+	fs.BoolVar(&nonSolid, "non-solid", false, "Disable solid compression (7z)")
 	fs.StringVar(&method, "m", "", "Compression method (deflate, zstd, store, etc.)")
 	fs.BoolVar(&incremental, "incremental", false, "Incremental mode (.zip_dumpdir)")
 	fs.BoolVar(&keepOld, "keep-old", false, "Keep old files on extract")
@@ -135,6 +137,7 @@ func runZipper(args []string) error {
 		Concurrency:        concurrency,
 		Xattrs:             xattrs,
 		Solid:              solid,
+		NonSolid:           nonSolid,
 		Method:             method,
 		Level:              level,
 		Incremental:        incremental,
@@ -230,20 +233,22 @@ func runZipper(args []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to create archiver: %w", err)
 		}
-		defer a.Close()
 
 		var stopProgress func()
 		if progress {
 			stopProgress = startProgressBar(a, totalBytes, totalEntries, "Archiving")
 		}
-		err = a.Archive(context.Background(), files)
+		archiveErr := a.Archive(context.Background(), files)
 		if stopProgress != nil {
 			stopProgress()
 		}
-		if err != nil {
-			return err
+
+		closeErr := a.Close()
+
+		if archiveErr != nil {
+			return archiveErr
 		}
-		return nil
+		return closeErr
 
 	case "a":
 		if len(parsedArgs) < 2 {
@@ -322,20 +327,21 @@ func runZipper(args []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to create extractor: %w", err)
 		}
-		defer e.Close()
 
 		var stopProgress func()
 		if progress {
 			stopProgress = startProgressBar(e, 0, 0, "Extracting")
 		}
-		err = e.Extract(context.Background())
+		extractErr := e.Extract(context.Background())
 		if stopProgress != nil {
 			stopProgress()
 		}
-		if err != nil {
-			return err
+		closeErr := e.Close()
+
+		if extractErr != nil {
+			return extractErr
 		}
-		return nil
+		return closeErr
 	case "repair":
 		if len(parsedArgs) < 1 {
 			return fmt.Errorf("archive name is required for repair")

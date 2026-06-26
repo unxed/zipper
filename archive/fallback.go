@@ -114,7 +114,11 @@ func NewFallbackArchiver(filename, chroot string, opts Options) (Archiver, error
 	} else if strings.HasSuffix(lower, ".zip") {
 		format = archives.Zip{}
 	} else if strings.HasSuffix(lower, ".7z") {
-		format = archives.SevenZip{Solid: opts.Solid, ContinueOnError: opts.Tolerant, Password: opts.Password}
+		solid := !opts.NonSolid
+		if opts.Solid {
+			solid = true // Явный флаг перекрывает умалчивания
+		}
+		format = archives.SevenZip{Solid: solid, ContinueOnError: opts.Tolerant, Password: opts.Password}
 	} else if filename == "-" {
 		format = archives.CompressedArchive{Compression: archives.Gz{}, Archival: archives.Tar{}}
 	} else {

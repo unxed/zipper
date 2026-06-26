@@ -45,6 +45,7 @@ type Options struct {
 	Incremental bool
 	IndexPath   string
 	EmbeddedIdx bool
+	NonSolid    bool
 
 	// Extractor specific
 	RecoveryPct int
