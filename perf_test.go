@@ -98,9 +98,7 @@ func generateDataset(b *testing.B, dir string, def DatasetDef) {
 						copy(c, commonText)
 					}
 				} else if rem == 1 {
-					for j := range c {
-						c[j] = 0 // Идеально сжимаемые нули
-					}
+					clear(c) // Идеально сжимаемые нули
 				} else {
 					fastRandBytes(&fileSeed, c) // Абсолютно несжимаемый мусор
 				}
@@ -147,7 +145,24 @@ func runInternal(args []string) error {
 	}
 }
 
+func cleanupLeftoverTempFiles() {
+	files, err := filepath.Glob(filepath.Join(os.TempDir(), "zipper-stdin-*.tmp"))
+	if err == nil {
+		for _, f := range files {
+			_ = os.Remove(f)
+		}
+	}
+	files, err = filepath.Glob(filepath.Join(os.TempDir(), "f4crypt-zip-*.tmp"))
+	if err == nil {
+		for _, f := range files {
+			_ = os.Remove(f)
+		}
+	}
+}
+
 func BenchmarkPerformance(b *testing.B) {
+	cleanupLeftoverTempFiles()
+
 	pZip, _ := exec.LookPath("zip")
 	pUnzip, _ := exec.LookPath("unzip")
 	pTar, _ := exec.LookPath("tar")
@@ -326,10 +341,20 @@ func BenchmarkPerformance(b *testing.B) {
 					if _, err := os.Stat(arcPath); os.IsNotExist(err) {
 						fullArgs := append([]string{}, tdef.PackArgs...)
 						fullArgs = append(fullArgs, arcPath, ".")
-						oldWd, _ := os.Getwd()
-						os.Chdir(srcDir)
-						_ = runInternal(fullArgs)
-						os.Chdir(oldWd)
+						var genErr error
+						if tdef.IsInternal {
+							oldWd, _ := os.Getwd()
+							os.Chdir(srcDir)
+							genErr = runInternal(fullArgs)
+							os.Chdir(oldWd)
+						} else {
+							cmd := exec.Command(fullArgs[0], fullArgs[1:]...)
+							cmd.Dir = srcDir
+							genErr = cmd.Run()
+						}
+						if genErr != nil {
+							b.Fatalf("failed to pre-generate archive for unpack: %v", genErr)
+						}
 					}
 
 					b.Run(tdef.Name, func(b *testing.B) {
@@ -337,8 +362,12 @@ func BenchmarkPerformance(b *testing.B) {
 						b.ResetTimer()
 						for i := 0; i < b.N; i++ {
 							b.StopTimer()
-							os.RemoveAll(outDir)
-							os.MkdirAll(outDir, 0755)
+							if err := os.RemoveAll(outDir); err != nil {
+								b.Fatalf("cleanup failed: %v", err)
+							}
+							if err := os.MkdirAll(outDir, 0755); err != nil {
+								b.Fatalf("mkdir failed: %v", err)
+							}
 							b.StartTimer()
 
 							if tdef.IsInternal {
