@@ -43,8 +43,6 @@ require (
 	golang.org/x/text v0.37.0 // indirect
 )
 
-// replace github.com/ebitengine/purego => github.com/unxed/pureffi v0.1.10
-
 // replace github.com/unxed/archives => ../archives
 
 // replace github.com/unxed/sevenzip => ../sevenzip
