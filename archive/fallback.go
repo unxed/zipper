@@ -108,9 +108,9 @@ func NewFallbackArchiver(filename, chroot string, opts Options) (Archiver, error
 	lower := strings.ToLower(filename)
 
 	if strings.HasSuffix(lower, ".tar.gz") || strings.HasSuffix(lower, ".tgz") {
-		format = archives.CompressedArchive{Compression: archives.Gz{}, Archival: archives.Tar{}}
+		format = archives.CompressedArchive{Compression: archives.Gz{Multithreaded: true}, Archival: archives.Tar{}}
 	} else if strings.HasSuffix(lower, ".gz") {
-		format = archives.CompressedArchive{Compression: archives.Gz{}}
+		format = archives.CompressedArchive{Compression: archives.Gz{Multithreaded: true}}
 	} else if strings.HasSuffix(lower, ".zip") {
 		format = archives.Zip{}
 	} else if strings.HasSuffix(lower, ".7z") {
@@ -120,7 +120,7 @@ func NewFallbackArchiver(filename, chroot string, opts Options) (Archiver, error
 		}
 		format = archives.SevenZip{Solid: solid, ContinueOnError: opts.Tolerant, Password: opts.Password}
 	} else if filename == "-" {
-		format = archives.CompressedArchive{Compression: archives.Gz{}, Archival: archives.Tar{}}
+		format = archives.CompressedArchive{Compression: archives.Gz{Multithreaded: true}, Archival: archives.Tar{}}
 	} else {
 		return nil, fmt.Errorf("unsupported fallback creation format for %s", filename)
 	}

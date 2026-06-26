@@ -240,7 +240,7 @@ func BenchmarkPerformance(b *testing.B) {
 				UnpackArgs: []string{"zipper", "x"},
 			})
 
-			// 3. TAR (Zstd) - Native vs Zipper
+			// 3. TAR (Zstd and Gzip) - Native vs Zipper
 			if pTar != "" {
 				tools = append(tools, ToolDef{
 					Name:       "TAR_ZSTD_Native",
@@ -248,11 +248,23 @@ func BenchmarkPerformance(b *testing.B) {
 					PackArgs:   []string{pTar, "--zstd", "-cf"},
 					UnpackArgs: []string{pTar},
 				})
+				tools = append(tools, ToolDef{
+					Name:       "TAR_GZIP_Native",
+					IsInternal: false,
+					PackArgs:   []string{pTar, "-czf"},
+					UnpackArgs: []string{pTar},
+				})
 			}
 			tools = append(tools, ToolDef{
 				Name:       "TAR_ZSTD_Zipper",
 				IsInternal: true,
 				PackArgs:   []string{"tar", "--zstd", "-cf"},
+				UnpackArgs: []string{"tar"},
+			})
+			tools = append(tools, ToolDef{
+				Name:       "TAR_GZIP_Zipper",
+				IsInternal: true,
+				PackArgs:   []string{"tar", "-czf"},
 				UnpackArgs: []string{"tar"},
 			})
 
@@ -292,7 +304,9 @@ func BenchmarkPerformance(b *testing.B) {
 				for _, tdef := range tools {
 					b.Run(tdef.Name, func(b *testing.B) {
 						ext := ".zip"
-						if strings.Contains(strings.ToLower(tdef.Name), "tar") {
+						if strings.Contains(tdef.Name, "TAR_GZIP") {
+							ext = ".tar.gz"
+						} else if strings.Contains(tdef.Name, "TAR_ZSTD") {
 							ext = ".tar.zst"
 						} else if strings.Contains(strings.ToLower(tdef.Name), "7z") {
 							ext = ".7z"
@@ -334,7 +348,9 @@ func BenchmarkPerformance(b *testing.B) {
 			b.Run("Unpack", func(b *testing.B) {
 				for _, tdef := range tools {
 					ext := ".zip"
-					if strings.Contains(strings.ToLower(tdef.Name), "tar") {
+					if strings.Contains(tdef.Name, "TAR_GZIP") {
+						ext = ".tar.gz"
+					} else if strings.Contains(tdef.Name, "TAR_ZSTD") {
 						ext = ".tar.zst"
 					} else if strings.Contains(strings.ToLower(tdef.Name), "7z") {
 						ext = ".7z"
@@ -400,7 +416,11 @@ func BenchmarkPerformance(b *testing.B) {
 								} else if filepath.Base(prog) == "7z" {
 									cmd = exec.Command(prog, "x", arcPath, "-o"+outDir, "-y")
 								} else if filepath.Base(prog) == "tar" {
-									cmd = exec.Command(prog, "--zstd", "-xf", arcPath, "-C", outDir)
+									if strings.Contains(tdef.Name, "GZIP") {
+										cmd = exec.Command(prog, "-zxf", arcPath, "-C", outDir)
+									} else {
+										cmd = exec.Command(prog, "--zstd", "-xf", arcPath, "-C", outDir)
+									}
 								}
 								if err := cmd.Run(); err != nil {
 									b.Fatalf("external unpack failed: %v", err)
