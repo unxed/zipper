@@ -234,24 +234,24 @@ func BenchmarkPerformance(b *testing.B) {
 					PackArgs:   []string{pTar, "--zstd", "-cf"},
 					UnpackArgs: []string{pTar},
 				})
-    			tools = append(tools, ToolDef{
-    				Name:       "TAR_ZSTD_Zipper",
-    				IsInternal: true,
-    				PackArgs:   []string{"tar", "--zstd", "-cf"},
-    				UnpackArgs: []string{"tar"},
-    			})
+				tools = append(tools, ToolDef{
+					Name:       "TAR_ZSTD_Zipper",
+					IsInternal: true,
+					PackArgs:   []string{"tar", "--zstd", "-cf"},
+					UnpackArgs: []string{"tar"},
+				})
 				tools = append(tools, ToolDef{
 					Name:       "TAR_GZIP_Native",
 					IsInternal: false,
 					PackArgs:   []string{pTar, "-czf"},
 					UnpackArgs: []string{pTar},
 				})
-    			tools = append(tools, ToolDef{
-    				Name:       "TAR_GZIP_Zipper",
-    				IsInternal: true,
-    				PackArgs:   []string{"tar", "-czf"},
-    				UnpackArgs: []string{"tar"},
-    			})
+				tools = append(tools, ToolDef{
+					Name:       "TAR_GZIP_Zipper",
+					IsInternal: true,
+					PackArgs:   []string{"tar", "-czf"},
+					UnpackArgs: []string{"tar"},
+				})
 			}
 
 			// 4. 7Z (LZMA) - Native vs Zipper (Solid & Non-Solid)
@@ -262,24 +262,24 @@ func BenchmarkPerformance(b *testing.B) {
 					PackArgs:   []string{p7z, "a", "-t7z", "-ms=on", "-bso0"},
 					UnpackArgs: []string{p7z},
 				})
-    			tools = append(tools, ToolDef{
-    				Name:       "7Z_LZMA_Zipper_Solid",
-    				IsInternal: true,
-    				PackArgs:   []string{"zipper", "c", "-solid"},
-    				UnpackArgs: []string{"zipper", "x"},
-    			})
+				tools = append(tools, ToolDef{
+					Name:       "7Z_LZMA_Zipper_Solid",
+					IsInternal: true,
+					PackArgs:   []string{"zipper", "c", "-solid"},
+					UnpackArgs: []string{"zipper", "x"},
+				})
 				tools = append(tools, ToolDef{
 					Name:       "7Z_LZMA_Native_Files",
 					IsInternal: false,
 					PackArgs:   []string{p7z, "a", "-t7z", "-ms=off", "-bso0"},
 					UnpackArgs: []string{p7z},
 				})
-    			tools = append(tools, ToolDef{
-    				Name:       "7Z_LZMA_Zipper_Files",
-    				IsInternal: true,
-    				PackArgs:   []string{"zipper", "c", "-non-solid"},
-    				UnpackArgs: []string{"zipper", "x"},
-    			})
+				tools = append(tools, ToolDef{
+					Name:       "7Z_LZMA_Zipper_Files",
+					IsInternal: true,
+					PackArgs:   []string{"zipper", "c", "-non-solid"},
+					UnpackArgs: []string{"zipper", "x"},
+				})
 			}
 
 			// 5. ZIP Advanced (Zstd, Solid/Chunked)
