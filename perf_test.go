@@ -96,7 +96,17 @@ func generateDataset(b *testing.B, dir string, def DatasetDef) {
 					copy(c, commonText)
 				}
 			case ProfileMixed:
-				rem := i % 3
+
+				// Выбираем режим чередования в зависимости от количества файлов
+				var rem int
+				if def.FileCount == 1 {
+					// Для одиночного файла чередуем профили блоков каждые 1 МБ
+					rem = int((written / (1024 * 1024)) % 3)
+				} else {
+					// Для множества файлов чередуем файлы целиком по их индексу
+					rem = i % 3
+				}
+
 				if rem == 0 {
 					fastTextBytes(&fileSeed, c)
 					if written == 0 && len(c) >= len(commonText) {
