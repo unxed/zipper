@@ -365,27 +365,27 @@ func BenchmarkPerformance(b *testing.B) {
 					arcPath := filepath.Join(tmpBase, ds.Name+"_"+tdef.Name+ext)
 					outDir := filepath.Join(tmpBase, ds.Name+"_"+tdef.Name+"_out")
 
-					// Ensure the archive is pre-generated (in case Pack step didn't run or was skipped)
-					if _, err := os.Stat(arcPath); os.IsNotExist(err) {
-						fullArgs := append([]string{}, tdef.PackArgs...)
-						fullArgs = append(fullArgs, arcPath, ".")
-						var genErr error
-						if tdef.IsInternal {
-							oldWd, _ := os.Getwd()
-							os.Chdir(srcDir)
-							genErr = runInternal(fullArgs)
-							os.Chdir(oldWd)
-						} else {
-							cmd := exec.Command(fullArgs[0], fullArgs[1:]...)
-							cmd.Dir = srcDir
-							genErr = cmd.Run()
-						}
-						if genErr != nil {
-							b.Fatalf("failed to pre-generate archive for unpack: %v", genErr)
-						}
-					}
-
 					b.Run(tdef.Name, func(b *testing.B) {
+						// Ensure the archive is pre-generated (in case Pack step didn't run or was skipped)
+						if _, err := os.Stat(arcPath); os.IsNotExist(err) {
+							fullArgs := append([]string{}, tdef.PackArgs...)
+							fullArgs = append(fullArgs, arcPath, ".")
+							var genErr error
+							if tdef.IsInternal {
+								oldWd, _ := os.Getwd()
+								os.Chdir(srcDir)
+								genErr = runInternal(fullArgs)
+								os.Chdir(oldWd)
+							} else {
+								cmd := exec.Command(fullArgs[0], fullArgs[1:]...)
+								cmd.Dir = srcDir
+								genErr = cmd.Run()
+							}
+							if genErr != nil {
+								b.Fatalf("failed to pre-generate archive for unpack: %v", genErr)
+							}
+						}
+
 						b.SetBytes(ds.TotalSize)
 						b.ResetTimer()
 						for i := 0; i < b.N; i++ {
