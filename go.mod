@@ -42,12 +42,12 @@ require (
 	golang.org/x/text v0.37.0 // indirect
 )
 
-replace github.com/unxed/archives => ../archives
+// replace github.com/unxed/archives => ../archives
 
-replace github.com/unxed/sevenzip => ../sevenzip
+// replace github.com/unxed/sevenzip => ../sevenzip
 
-replace github.com/unxed/tar => ../tar
+// replace github.com/unxed/tar => ../tar
 
-replace github.com/unxed/zip => ../zip
+// replace github.com/unxed/zip => ../zip
 
-replace github.com/unxed/xz => ../xz
+// replace github.com/unxed/xz => ../xz
