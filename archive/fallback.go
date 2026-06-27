@@ -50,23 +50,18 @@ func (e *fallbackExtractor) Extract(ctx context.Context) error {
 		return fmt.Errorf("format %T does not support extraction", format)
 	}
 
+	cleanChroot := filepath.Clean(e.chroot)
+
 	return ex.Extract(ctx, stream, func(ctx context.Context, info archives.FileInfo) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
 
-		// Защита от path traversal (Zip Slip)
-		targetPath, err := filepath.Abs(filepath.Join(e.chroot, info.NameInArchive))
-		if err != nil {
-			return err
-		}
-		prefix := e.chroot
-		if !strings.HasSuffix(prefix, string(filepath.Separator)) {
-			prefix += string(filepath.Separator)
-		}
-		if !strings.HasPrefix(targetPath, prefix) && targetPath != e.chroot {
+		cleanName := filepath.ToSlash(filepath.Clean(info.NameInArchive))
+		if strings.HasPrefix(cleanName, "../") || strings.HasPrefix(cleanName, "/") {
 			return fmt.Errorf("path traversal attack detected: %s", info.NameInArchive)
 		}
+		targetPath := filepath.Join(cleanChroot, cleanName)
 
 		if info.IsDir() {
 			return os.MkdirAll(targetPath, 0755)

@@ -55,8 +55,17 @@ func runTar(args []string) error {
 			}
 			continue
 		}
-		if !strings.HasPrefix(arg, "-") && mode == "" {
-			arg = "-" + arg
+		if mode == "" && !strings.HasPrefix(arg, "-") && !strings.Contains(arg, "=") {
+			isFlags := true
+			for _, c := range arg {
+				if !strings.ContainsRune("cxtruzjJvfpP", c) {
+					isFlags = false
+					break
+				}
+			}
+			if isFlags {
+				arg = "-" + arg
+			}
 		}
 		if strings.HasPrefix(arg, "-") {
 			for j := 1; j < len(arg); j++ {

@@ -128,32 +128,12 @@ func RepairTarArchive(filename string) error {
 		return fmt.Errorf("embedded recovery record or external .par2 sidecar not found")
 	}
 
-	shadowBytes := make([]byte, shadowSize)
-	if _, err := mvr.ReadAt(shadowBytes, shadowStart); err != nil {
-		return err
+	var parDataBuf bytes.Buffer
+	err = tar.ExtractShadowFileToWriter(mvr, totalSize, method, ".tarext/par2/recovery.par2", &parDataBuf)
+	if err != nil || parDataBuf.Len() == 0 {
+		return fmt.Errorf("embedded recovery record not found or extraction failed: %v", err)
 	}
-
-	var parData []byte
-	sr := bytes.NewReader(shadowBytes)
-	tr := tar.NewReader(sr)
-	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		if hdr.Name == ".tarext/par2/recovery.par2" {
-			parData = make([]byte, hdr.Size)
-			io.ReadFull(tr, parData)
-			break
-		}
-	}
-
-	if len(parData) == 0 {
-		return fmt.Errorf("embedded recovery record (.tarext/par2/recovery.par2) not found")
-	}
+	parData := parDataBuf.Bytes()
 
 	srt := &sectionRepairTarget{target: mvr, size: shadowStart}
 	return par2.RepairTargetData(srt, parData)
