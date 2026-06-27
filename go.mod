@@ -5,8 +5,8 @@ go 1.25.5
 require (
 	github.com/unxed/archives v0.0.0-20260627001201-a8b3b13132cf
 	github.com/unxed/par2 v0.1.2
-	github.com/unxed/tar v0.1.99
-	github.com/unxed/zip v0.1.107
+	github.com/unxed/tar v0.1.100
+	github.com/unxed/zip v0.1.108
 )
 
 require (
