@@ -3,10 +3,10 @@ module github.com/unxed/zipper
 go 1.25.5
 
 require (
-	github.com/unxed/archives v0.0.0-20260627103410-0e9384bd5358
+	github.com/unxed/archives v0.0.0-20260627175018-cdc7256df44b
 	github.com/unxed/par2 v0.1.2
-	github.com/unxed/tar v0.1.103
-	github.com/unxed/zip v0.1.110
+	github.com/unxed/tar v0.1.104
+	github.com/unxed/zip v0.1.111
 )
 
 require (
@@ -31,8 +31,8 @@ require (
 	github.com/tetratelabs/wazero v1.8.2 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/unxed/localecp v0.1.4 // indirect
-	github.com/unxed/sevenzip v0.0.0-20260627103327-c8ef042d6da4 // indirect
-	github.com/unxed/xz v0.1.30 // indirect
+	github.com/unxed/sevenzip v0.0.0-20260627174951-d4206fad71d9 // indirect
+	github.com/unxed/xz v0.1.31 // indirect
 	github.com/unxed/zipcharset v0.1.4 // indirect
 	github.com/unxed/zlib4go v0.1.11 // indirect
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
