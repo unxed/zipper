@@ -57,11 +57,6 @@ For more details, refer to the technical specifications of our format extensions
 
 An important note regarding development of extension standards: they must ensure backward compatibility and, whenever possible, utilize the standard extension mechanisms of the respective formats—except in cases where those capabilities are exhausted or do not allow the task to be accomplished efficiently.
 
-## Compression Standards and Rules
-
-For `sevenzip` (LZMA/LZMA2), this library enforces two strict rules to ensure competitive performance and quality:
-1. **Speed:** Compression and decompression must not be slower than the native `7z` utility. This is achieved by utilizing heavily optimized, fully parallelized chunk and segment decoders/encoders that eliminate GC pressure.
-2. **Ratio:** LZMA2 compression must perform comparably to or better than DEFLATE. In the worst-case (rare) scenarios, it should not be worse, and in standard scenarios, it should yield at least a ~30% (1/3) better compression ratio.
 ## Use as a Go Library
 
 The core archiver engine is designed as a standalone, reusable Go package located under the `./archive` directory. You can import `github.com/unxed/zipper/archive` into your own Go projects to get high-performance, concurrent, and high-fidelity archiving.
