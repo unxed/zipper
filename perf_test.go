@@ -193,12 +193,12 @@ func BenchmarkPerformance(b *testing.B) {
 	_ = os.RemoveAll(warmupTmp)
 
 	datasets := []DatasetDef{
-		{Name: "100_Files_x_512KB_Mixed", FileCount: 100, TotalSize: 50 * 1024 * 1024, DataProfile: ProfileMixed},
+		{Name: "100_Files_x_512KB_Mix", FileCount: 100, TotalSize: 50 * 1024 * 1024, DataProfile: ProfileMixed},
 	}
 
 	if isFull {
 		datasets = append(datasets,
-			DatasetDef{Name: "1_File_x_50MB_Mixed", FileCount: 1, TotalSize: 50 * 1024 * 1024, DataProfile: ProfileMixed},
+			DatasetDef{Name: "1_File_x_50MB_Mix", FileCount: 1, TotalSize: 50 * 1024 * 1024, DataProfile: ProfileMixed},
 			DatasetDef{Name: "100_Files_x_512KB_Rand", FileCount: 100, TotalSize: 50 * 1024 * 1024, DataProfile: ProfileRand},
 			DatasetDef{Name: "10000_Files_x_5KB_Text", FileCount: 10000, TotalSize: 50 * 1024 * 1024, DataProfile: ProfileText},
 		)
