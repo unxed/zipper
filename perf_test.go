@@ -225,14 +225,14 @@ func BenchmarkPerformance(b *testing.B) {
 				tools = append(tools, ToolDef{
 					Name:       "ZIP_Deflate_Native",
 					IsInternal: false,
-					PackArgs:   []string{pZip, "-q", "-r", "-1"},
+					PackArgs:   []string{pZip, "-q", "-r"},
 					UnpackArgs: []string{pUnzip},
 				})
 			}
 			tools = append(tools, ToolDef{
 				Name:       "ZIP_Deflate_Zipper",
 				IsInternal: true,
-				PackArgs:   []string{"zip", "-1"},
+				PackArgs:   []string{"zip"},
 				UnpackArgs: []string{"unzip"},
 			})
 
