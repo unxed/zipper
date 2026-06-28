@@ -6,7 +6,7 @@ require (
 	github.com/unxed/archives v0.0.0-20260627213031-e5dbece9200b
 	github.com/unxed/par2 v0.1.2
 	github.com/unxed/tar v0.1.110
-	github.com/unxed/zip v0.1.113
+	github.com/unxed/zip v0.1.114
 )
 
 require (
