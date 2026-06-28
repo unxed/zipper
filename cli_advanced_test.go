@@ -389,3 +389,39 @@ func TestCli_TrimParents(t *testing.T) {
 		t.Error("expected appended extra.txt to be trimmed to base name 'extra.txt'")
 	}
 }
+
+func TestCli_ListAndProgress7z(t *testing.T) {
+	tmp := t.TempDir()
+	srcDir := filepath.Join(tmp, "src")
+	os.MkdirAll(srcDir, 0755)
+	os.WriteFile(filepath.Join(srcDir, "test.txt"), []byte("7z list data"), 0644)
+
+	archivePath := filepath.Join(tmp, "list_progress.7z")
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	defer func() { os.Stdout = oldStdout }()
+
+	err := runZipper([]string{"zipper", "c", "-C", srcDir, "-progress", archivePath, "test.txt"})
+	if err != nil {
+		t.Fatalf("zipper create 7z with progress failed: %v", err)
+	}
+
+	err = runZipper([]string{"zipper", "l", archivePath})
+	if err != nil {
+		t.Fatalf("zipper list 7z failed: %v", err)
+	}
+
+	w.Close()
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+
+	output := buf.String()
+	if !strings.Contains(output, "test.txt") {
+		t.Errorf("expected list output to contain 'test.txt', got:\n%s", output)
+	}
+	if !strings.Contains(output, "Length") || !strings.Contains(output, "Date   Time") {
+		t.Errorf("expected list header, got:\n%s", output)
+	}
+}

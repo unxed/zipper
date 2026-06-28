@@ -10,7 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 )
-import "sync"
+import (
+	"sync"
+	"sync/atomic"
+)
 
 var fallbackCopyBufPool = sync.Pool{
 	New: func() interface{} {
@@ -22,6 +25,22 @@ var fallbackCopyBufPool = sync.Pool{
 type fallbackExtractor struct {
 	filename string
 	chroot   string
+
+	writtenBytes   int64
+	writtenEntries int64
+}
+
+type progressReader struct {
+	r io.Reader
+	e *fallbackExtractor
+}
+
+func (pr *progressReader) Read(p []byte) (int, error) {
+	n, err := pr.r.Read(p)
+	if n > 0 {
+		atomic.AddInt64(&pr.e.writtenBytes, int64(n))
+	}
+	return n, err
 }
 
 func NewFallbackExtractor(filename, chroot string, opts Options) (Extractor, error) {
@@ -57,6 +76,8 @@ func (e *fallbackExtractor) Extract(ctx context.Context) error {
 			return ctx.Err()
 		}
 
+		atomic.AddInt64(&e.writtenEntries, 1)
+
 		cleanName := filepath.ToSlash(filepath.Clean(info.NameInArchive))
 		if strings.HasPrefix(cleanName, "../") || strings.HasPrefix(cleanName, "/") {
 			return fmt.Errorf("path traversal attack detected: %s", info.NameInArchive)
@@ -83,10 +104,12 @@ func (e *fallbackExtractor) Extract(ctx context.Context) error {
 		}
 		defer in.Close()
 
+		pr := &progressReader{r: in, e: e}
+
 		bufPtr := fallbackCopyBufPool.Get().(*[]byte)
 		defer fallbackCopyBufPool.Put(bufPtr)
 
-		_, err = io.CopyBuffer(out, in, *bufPtr)
+		_, err = io.CopyBuffer(out, pr, *bufPtr)
 		return err
 	})
 }
@@ -95,7 +118,7 @@ func (e *fallbackExtractor) Close() error {
 	return nil
 }
 func (e *fallbackExtractor) Written() (bytes, entries int64) {
-	return 0, 0
+	return atomic.LoadInt64(&e.writtenBytes), atomic.LoadInt64(&e.writtenEntries)
 }
 
 type fallbackArchiver struct {
@@ -103,8 +126,10 @@ type fallbackArchiver struct {
 	chroot   string
 	format   archives.Archiver
 	f        io.WriteCloser
-	files    []archives.FileInfo
 	opts     Options
+
+	writtenBytes   int64
+	writtenEntries int64
 }
 
 func NewFallbackArchiver(filename, chroot string, opts Options) (Archiver, error) {
@@ -149,7 +174,21 @@ func NewFallbackArchiver(filename, chroot string, opts Options) (Archiver, error
 	}, nil
 }
 
+type progressFile struct {
+	fs.File
+	a *fallbackArchiver
+}
+
+func (pf *progressFile) Read(p []byte) (int, error) {
+	n, err := pf.File.Read(p)
+	if n > 0 {
+		atomic.AddInt64(&pf.a.writtenBytes, int64(n))
+	}
+	return n, err
+}
+
 func (a *fallbackArchiver) Archive(ctx context.Context, files map[string]os.FileInfo) error {
+	var aFiles []archives.FileInfo
 	for path, info := range files {
 		var rel string
 		var err error
@@ -172,25 +211,29 @@ func (a *fallbackArchiver) Archive(ctx context.Context, files map[string]os.File
 		}
 
 		capturePath := path
-		a.files = append(a.files, archives.FileInfo{
+		aFiles = append(aFiles, archives.FileInfo{
 			FileInfo:      info,
 			NameInArchive: filepath.ToSlash(rel),
 			Open: func() (fs.File, error) {
-				return os.Open(capturePath)
+				f, err := os.Open(capturePath)
+				if err == nil {
+					atomic.AddInt64(&a.writtenEntries, 1)
+					return &progressFile{File: f, a: a}, nil
+				}
+				return f, err
 			},
 		})
+	}
+	if len(aFiles) > 0 {
+		return a.format.Archive(ctx, a.f, aFiles)
 	}
 	return nil
 }
 
 func (a *fallbackArchiver) Close() error {
-	defer a.f.Close()
-	if len(a.files) > 0 {
-		return a.format.Archive(context.Background(), a.f, a.files)
-	}
-	return nil
+	return a.f.Close()
 }
 
 func (a *fallbackArchiver) Written() (bytes, entries int64) {
-	return 0, 0
+	return atomic.LoadInt64(&a.writtenBytes), atomic.LoadInt64(&a.writtenEntries)
 }
