@@ -11,10 +11,33 @@ import (
 	"github.com/unxed/zipper/archive"
 )
 
+func stripQuotes(s string) string {
+	s = strings.TrimSpace(s)
+	
+	// Handle Windows escaped quote at end: C:\path\" -> C:\path
+	// The shell passes \" as literal quote when it's at the end
+	for len(s) > 0 && (s[len(s)-1] == '"' || s[len(s)-1] == '\'') {
+		// Check if it's an escaped quote (preceded by backslash)
+		if len(s) >= 2 && s[len(s)-2] == '\\' {
+			s = s[:len(s)-2] + s[len(s)-1:] // Remove the backslash
+		}
+		s = s[:len(s)-1] // Remove the quote
+	}
+	
+	// Handle surrounding quotes
+	if len(s) >= 2 {
+		if (s[0] == '"' && s[len(s)-1] == '"') || (s[0] == '\'' && s[len(s)-1] == '\'') {
+			return s[1 : len(s)-1]
+		}
+	}
+	return s
+}
+
 type stringSlice []string
 
 func (s *stringSlice) String() string         { return strings.Join(*s, ", ") }
 func (s *stringSlice) Set(value string) error { *s = append(*s, value); return nil }
+
 func runZipper(args []string) error {
 	// Предварительный поиск команды среди аргументов (чтобы флаги могли стоять ДО команды)
 	var cmd string
@@ -114,7 +137,7 @@ func runZipper(args []string) error {
 		if len(argsLeft) == 0 {
 			break
 		}
-		parsedArgs = append(parsedArgs, argsLeft[0])
+		parsedArgs = append(parsedArgs, stripQuotes(argsLeft[0]))
 		flagArgs = argsLeft[1:]
 	}
 
@@ -122,7 +145,7 @@ func runZipper(args []string) error {
 		return fmt.Errorf("archive name is required")
 	}
 
-	archivePath := parsedArgs[0]
+	archivePath := stripQuotes(parsedArgs[0])
 	if archivePath != "-" && filepath.Ext(archivePath) == "" {
 		archivePath += archive.DefaultFormat()
 	}
