@@ -50,4 +50,4 @@ require (
 
 // replace github.com/unxed/zip => ../zip
 
-replace github.com/unxed/xz => ../xz
+// replace github.com/unxed/xz => ../xz

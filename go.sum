@@ -72,6 +72,8 @@ github.com/unxed/sevenzip v0.0.0-20260630191852-ff33261d1c4c h1:jMGNSSn56ck0tcbA
 github.com/unxed/sevenzip v0.0.0-20260630191852-ff33261d1c4c/go.mod h1:aDBXEDps55rCjzrotHs6+b5EYmPiL6JWAjEllJGdkHk=
 github.com/unxed/tar v0.1.116 h1:fKzX/v1kW84UaJIeG/5jaW7B35Bf3A+eDpevug2eZw8=
 github.com/unxed/tar v0.1.116/go.mod h1:qP0J9J0p/aX7r8nm4iE9inHn8TxdmwmC+5vGmg32sV0=
+github.com/unxed/xz v0.1.39 h1:+KrJ9MEnnOIIQXkiDc3jhGggvhpEA0GTPdU8rt/MDNg=
+github.com/unxed/xz v0.1.39/go.mod h1:+i9oua9YYxBJGNLh9s4itPLtCpCXs8X7M8/SNU4FeZc=
 github.com/unxed/zip v0.1.119 h1:UHJut3AvHEJSX0WDjSAKsxV6Wj2+GDNsWHJ/ljWm2zM=
 github.com/unxed/zip v0.1.119/go.mod h1:g5/HgdY65nrr2fO6bPR31JQf3vSPXcI/Sq3ocn/t7iI=
 github.com/unxed/zipcharset v0.1.4 h1:vt9klapB93tmEP5/ISzBms696V/s7TrmVqFJvEOBp4Q=
