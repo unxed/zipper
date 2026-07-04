@@ -6,7 +6,7 @@ require (
 	github.com/unxed/archives v0.0.0-20260704110259-1b09314d7be4
 	github.com/unxed/par2 v0.1.2
 	github.com/unxed/tar v0.1.117
-	github.com/unxed/zip v0.1.120
+	github.com/unxed/zip v0.1.121
 )
 
 require (
@@ -34,7 +34,7 @@ require (
 	github.com/unxed/sevenzip v0.0.0-20260704110200-9f4941a52a19 // indirect
 	github.com/unxed/xz v0.1.40 // indirect
 	github.com/unxed/zipcharset v0.1.4 // indirect
-	github.com/unxed/zlib4go v0.1.11 // indirect
+	github.com/unxed/zlib4go v0.1.13 // indirect
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
 	golang.org/x/crypto v0.46.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
