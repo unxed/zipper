@@ -283,9 +283,12 @@ func TestCliExternalRecoveryRecord(t *testing.T) {
 		t.Fatalf("failed to extract repaired archive: %v", err)
 	}
 
-	_, err = os.ReadFile(filepath.Join(dst, "file1.txt"))
+	b, err := os.ReadFile(filepath.Join(dst, "file1.txt"))
 	if err != nil {
 		t.Fatal(err)
+	}
+	if string(b) != "data for external par2 recovery testing" {
+		t.Errorf("got %q, want 'data for external par2...'", string(b))
 	}
 }
 
