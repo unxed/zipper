@@ -28,8 +28,11 @@ func main() {
 		return
 	}
 
+	// Очистка аргументов от лишних кавычек (особенность Windows cmd.exe: "C:\path\" -> C:\path")
+	args := cleanArgs(os.Args)
+
 	// Перехват глобальных флагов версии и помощи
-	arg := os.Args[1]
+	arg := args[1]
 	if arg == "--version" || arg == "-v" || arg == "version" {
 		revision := ""
 		buildTime := ""
@@ -68,13 +71,13 @@ func main() {
 	var err error
 	switch base {
 	case "tar":
-		err = runTar(os.Args)
+		err = runTar(args)
 	case "zip":
-		err = runZip(os.Args)
+		err = runZip(args)
 	case "unzip":
-		err = runUnzip(os.Args)
+		err = runUnzip(args)
 	default:
-		err = runZipper(os.Args)
+		err = runZipper(args)
 	}
 
 	if err != nil {
@@ -83,6 +86,17 @@ func main() {
 	}
 }
 
+func cleanArgs(args []string) []string {
+	cleaned := make([]string, len(args))
+	for i, a := range args {
+		if len(a) > 0 && a[len(a)-1] == '"' && a[0] != '"' {
+			cleaned[i] = a[:len(a)-1]
+		} else {
+			cleaned[i] = a
+		}
+	}
+	return cleaned
+}
 func showHelp(base string) {
 	switch base {
 	case "tar":

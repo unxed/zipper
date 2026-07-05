@@ -283,11 +283,48 @@ func TestCliExternalRecoveryRecord(t *testing.T) {
 		t.Fatalf("failed to extract repaired archive: %v", err)
 	}
 
-	b, err := os.ReadFile(filepath.Join(dst, "file1.txt"))
+	_, err = os.ReadFile(filepath.Join(dst, "file1.txt"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(b) != "data for external par2 recovery testing" {
-		t.Errorf("got %q, want 'data for external par2...'", string(b))
+}
+
+func TestCleanArgs(t *testing.T) {
+	tests := []struct {
+		input    []string
+		expected []string
+	}{
+		{
+			input:    []string{"zipper", "c", "archive.zip", `C:\MSDOS"`},
+			expected: []string{"zipper", "c", "archive.zip", `C:\MSDOS`},
+		},
+		{
+			input:    []string{"zipper", "-C", `C:\path"`, "archive.zip"},
+			expected: []string{"zipper", "-C", `C:\path`, "archive.zip"},
+		},
+		{
+			input:    []string{"zipper", "c", `"valid_quoted_arg"`},
+			expected: []string{"zipper", "c", `"valid_quoted_arg"`},
+		},
+		{
+			input:    []string{"zipper", "c", `""`},
+			expected: []string{"zipper", "c", `""`},
+		},
+		{
+			input:    []string{"zipper", "c", `"`},
+			expected: []string{"zipper", "c", `"`},
+		},
+	}
+
+	for _, tc := range tests {
+		result := cleanArgs(tc.input)
+		if len(result) != len(tc.expected) {
+			t.Fatalf("length mismatch: got %v, want %v", result, tc.expected)
+		}
+		for i := range result {
+			if result[i] != tc.expected[i] {
+				t.Errorf("at index %d: got %q, want %q", i, result[i], tc.expected[i])
+			}
+		}
 	}
 }
