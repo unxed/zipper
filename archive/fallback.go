@@ -97,6 +97,10 @@ func (e *fallbackExtractor) Extract(ctx context.Context) error {
 		e.currentFile = cleanName
 		e.mu.Unlock()
 
+		e.mu.Lock()
+		e.currentFile = cleanName
+		e.mu.Unlock()
+
 		if info.IsDir() {
 			return os.MkdirAll(targetPath, 0755)
 		}
