@@ -153,3 +153,10 @@ func (t *tarExtractor) Close() error {
 func (t *tarExtractor) Written() (bytes, entries int64) {
 	return t.e.Written()
 }
+
+func (t *tarExtractor) CurrentFile() string {
+	if fp, ok := interface{}(t.e).(interface{ CurrentFile() string }); ok {
+		return fp.CurrentFile()
+	}
+	return ""
+}

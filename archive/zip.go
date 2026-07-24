@@ -215,3 +215,10 @@ func (z *zipExtractor) Close() error {
 func (z *zipExtractor) Written() (bytes, entries int64) {
 	return z.e.Written()
 }
+
+func (z *zipExtractor) CurrentFile() string {
+	if fp, ok := interface{}(z.e).(interface{ CurrentFile() string }); ok {
+		return fp.CurrentFile()
+	}
+	return ""
+}
