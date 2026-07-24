@@ -9,8 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-)
-import (
 	"sync"
 	"sync/atomic"
 )
