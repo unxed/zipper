@@ -28,6 +28,15 @@ type fallbackExtractor struct {
 
 	writtenBytes   int64
 	writtenEntries int64
+
+	mu          sync.Mutex
+	currentFile string
+}
+
+func (e *fallbackExtractor) CurrentFile() string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.currentFile
 }
 
 type progressReader struct {
@@ -83,6 +92,10 @@ func (e *fallbackExtractor) Extract(ctx context.Context) error {
 			return fmt.Errorf("path traversal attack detected: %s", info.NameInArchive)
 		}
 		targetPath := filepath.Join(cleanChroot, cleanName)
+
+		e.mu.Lock()
+		e.currentFile = cleanName
+		e.mu.Unlock()
 
 		if info.IsDir() {
 			return os.MkdirAll(targetPath, 0755)
