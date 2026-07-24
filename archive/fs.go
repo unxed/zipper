@@ -2,9 +2,13 @@ package archive
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
+	"path/filepath"
 
 	"github.com/unxed/archives"
 	"github.com/unxed/tar"
@@ -119,6 +123,9 @@ func newTarFS(filename string, opts Options) (FileSystem, error) {
 			}
 		}
 	}
+	if indexPath == "" {
+		indexPath = getDeterministicIndexPath(filename)
+	}
 	tfs, err := tar.NewFS(filename, indexPath, fopts...)
 	if err != nil {
 		return nil, err
@@ -188,4 +195,23 @@ func (f *fallbackFS) Close() error {
 		return err1
 	}
 	return err2
+}
+
+func getDeterministicIndexPath(filename string) string {
+	abs, err := filepath.Abs(filename)
+	if err != nil {
+		abs = filename
+	}
+	hash := sha256.Sum256([]byte(abs))
+	hashStr := hex.EncodeToString(hash[:16])
+	base := filepath.Base(filename)
+
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		cacheDir = os.TempDir()
+	}
+	dir := filepath.Join(cacheDir, "f4", "tar-indexes")
+	_ = os.MkdirAll(dir, 0755)
+
+	return filepath.Join(dir, fmt.Sprintf("%s-%s.index.sqlite", base, hashStr))
 }
