@@ -123,3 +123,24 @@ func TestFallbackArchiver_DifferentDrivesWindows(t *testing.T) {
 		t.Fatalf("expected success, got error: %v", err)
 	}
 }
+
+// TestIssue149_FallbackExtractor_CurrentFile verifies that the fallback extractor
+// correctly exposes the name of the file currently being processed.
+// This addresses the "no info about extracted files" user claim for Shift+F1.
+func TestIssue149_FallbackExtractor_CurrentFile(t *testing.T) {
+	ex := &fallbackExtractor{}
+
+	if ex.CurrentFile() != "" {
+		t.Errorf("Expected empty string initially, got %q", ex.CurrentFile())
+	}
+
+	expected := "nested/path/to/file.txt"
+
+	ex.mu.Lock()
+	ex.currentFile = expected
+	ex.mu.Unlock()
+
+	if got := ex.CurrentFile(); got != expected {
+		t.Errorf("Expected CurrentFile() to return %q, got %q", expected, got)
+	}
+}
