@@ -5,7 +5,7 @@ go 1.25.5
 require (
 	github.com/unxed/archives v0.0.0-20260728171610-555945c76813
 	github.com/unxed/par2 v0.1.2
-	github.com/unxed/tar v0.1.123
+	github.com/unxed/tar v0.1.125
 	github.com/unxed/zip v0.1.126
 )
 
@@ -17,7 +17,7 @@ require (
 	github.com/dovydenkovas/ppmd v0.1.1 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
-	github.com/klauspost/compress v1.18.7-0.20260521203646-ecdb779d8745 // indirect
+	github.com/klauspost/compress v1.19.1 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.3 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/minio/minlz v1.1.1 // indirect
