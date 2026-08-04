@@ -6,10 +6,29 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"sync"
 
 	"github.com/unxed/zipper/archive"
 )
+
+type efProgresser struct {
+	mu             sync.Mutex
+	overallWritten int64
+	overallEntries int64
+	current        archive.Progresser
+}
+
+func (p *efProgresser) Written() (int64, int64) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	var cw int64
+	if p.current != nil {
+		cw, _ = p.current.Written()
+	}
+	return p.overallWritten + cw, p.overallEntries
+}
 
 type stringSlice []string
 
@@ -66,11 +85,13 @@ func runZipper(args []string) error {
 		excludes         stringSlice
 		progress         bool
 		trimParents      bool
+		eachFile         bool
 	)
 
 	fs.Var(&excludes, "exclude", "Exclude files matching pattern")
 	fs.BoolVar(&progress, "progress", false, "Show progress bar")
 	fs.BoolVar(&trimParents, "trim-parents", false, "Trim parent directories from targets (like 7z)")
+	fs.BoolVar(&eachFile, "eachfile", false, "Put each file to separate archive")
 	fs.StringVar(&outDir, "C", ".", "Change to directory")
 	fs.IntVar(&concurrency, "j", 0, "Concurrency")
 	fs.IntVar(&level, "l", 0, "Compression level (1-9)")
@@ -223,6 +244,113 @@ func runZipper(args []string) error {
 		}
 		if trimParents {
 			opts.PathMapping = pathMapping
+		}
+
+		if eachFile {
+			if archivePath == "-" {
+				return fmt.Errorf("eachfile mode cannot be used with stdout")
+			}
+			outDirTarget := archivePath
+			var ext string
+			lowerTarget := strings.ToLower(outDirTarget)
+			if strings.HasSuffix(lowerTarget, ".tar.zst") {
+				ext = outDirTarget[len(outDirTarget)-8:]
+				outDirTarget = outDirTarget[:len(outDirTarget)-8]
+			} else if strings.HasSuffix(lowerTarget, ".tar.gz") || strings.HasSuffix(lowerTarget, ".tar.xz") {
+				ext = outDirTarget[len(outDirTarget)-7:]
+				outDirTarget = outDirTarget[:len(outDirTarget)-7]
+			} else if strings.HasSuffix(lowerTarget, ".tar.bz2") {
+				ext = outDirTarget[len(outDirTarget)-9:]
+				outDirTarget = outDirTarget[:len(outDirTarget)-9]
+			} else {
+				ext = filepath.Ext(outDirTarget)
+				if ext == "" {
+					ext = archive.DefaultFormat()
+				} else {
+					outDirTarget = strings.TrimSuffix(outDirTarget, ext)
+				}
+			}
+			if outDirTarget == "" {
+				outDirTarget = "out"
+			}
+
+			filePaths := make([]string, 0, len(files))
+			var totalFilesBytes int64
+			for path, info := range files {
+				if !info.IsDir() {
+					filePaths = append(filePaths, path)
+					totalFilesBytes += info.Size()
+				}
+			}
+			sort.Strings(filePaths)
+
+			var stopProgress func()
+			var efProgress *efProgresser
+			if progress {
+				efProgress = &efProgresser{}
+				stopProgress = startProgressBar(efProgress, totalFilesBytes, int64(len(filePaths)), "Archiving")
+			}
+
+			for _, path := range filePaths {
+				info := files[path]
+				rel := pathMapping[path]
+				if rel == "" {
+					var relErr error
+					rel, relErr = filepath.Rel(absChroot, path)
+					if relErr != nil || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
+						rel = filepath.ToSlash(path)
+						vol := filepath.VolumeName(path)
+						if vol != "" {
+							rel = strings.TrimPrefix(rel, filepath.ToSlash(vol))
+						}
+						rel = strings.TrimPrefix(rel, "/")
+					}
+				}
+
+				indArchivePath := filepath.Join(outDirTarget, rel+ext)
+				if err := os.MkdirAll(filepath.Dir(indArchivePath), 0755); err != nil {
+					return fmt.Errorf("failed to create directory for %s: %w", indArchivePath, err)
+				}
+
+				if err := checkOverwrite(indArchivePath); err != nil {
+					return err
+				}
+
+				a, err := archive.NewArchiver(indArchivePath, absChroot, opts)
+				if err != nil {
+					return fmt.Errorf("failed to create archiver for %s: %w", indArchivePath, err)
+				}
+
+				if efProgress != nil {
+					efProgress.mu.Lock()
+					efProgress.current = a
+					efProgress.mu.Unlock()
+				}
+
+				archiveErr := a.Archive(context.Background(), map[string]os.FileInfo{path: info})
+				closeErr := a.Close()
+
+				if efProgress != nil {
+					efProgress.mu.Lock()
+					w, _ := a.Written()
+					efProgress.overallWritten += w
+					efProgress.overallEntries++
+					efProgress.current = nil
+					efProgress.mu.Unlock()
+				}
+
+				if archiveErr != nil {
+					return archiveErr
+				}
+				if closeErr != nil {
+					return closeErr
+				}
+			}
+
+			if stopProgress != nil {
+				stopProgress()
+			}
+			return nil
 		}
 
 		if err := checkOverwrite(archivePath); err != nil {

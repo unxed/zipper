@@ -425,3 +425,154 @@ func TestCli_ListAndProgress7z(t *testing.T) {
 		t.Errorf("expected list header, got:\n%s", output)
 	}
 }
+func TestCli_EachFile(t *testing.T) {
+	tmp := t.TempDir()
+	srcDir := filepath.Join(tmp, "src")
+	os.MkdirAll(filepath.Join(srcDir, "sub"), 0755)
+
+	os.WriteFile(filepath.Join(srcDir, "file1.txt"), []byte("content1"), 0644)
+	os.WriteFile(filepath.Join(srcDir, "sub", "file2.txt"), []byte("content2"), 0644)
+
+	outDir := filepath.Join(tmp, "out_eachfile.zip")
+
+	err := runZipper([]string{"zipper", "c", "-C", srcDir, "-eachfile", outDir, "."})
+	if err != nil {
+		t.Fatalf("zipper c with -eachfile failed: %v", err)
+	}
+
+	targetDir := filepath.Join(tmp, "out_eachfile")
+	arc1 := filepath.Join(targetDir, "file1.txt.zip")
+	arc2 := filepath.Join(targetDir, "sub", "file2.txt.zip")
+
+	if _, err := os.Stat(arc1); err != nil {
+		t.Errorf("expected archive %s to exist: %v", arc1, err)
+	}
+	if _, err := os.Stat(arc2); err != nil {
+		t.Errorf("expected archive %s to exist: %v", arc2, err)
+	}
+
+	zr1, err := zip.OpenReader(arc1)
+	if err != nil {
+		t.Fatalf("failed to open arc1: %v", err)
+	}
+	defer zr1.Close()
+
+	if len(zr1.File) != 1 {
+		t.Errorf("expected 1 file in arc1, got %d", len(zr1.File))
+	} else {
+		f := zr1.File[0]
+		if f.Name != "file1.txt" {
+			t.Errorf("expected file name 'file1.txt' in arc1, got '%s'", f.Name)
+		}
+		rc, err := f.Open()
+		if err != nil {
+			t.Fatalf("failed to open file in arc1: %v", err)
+		}
+		defer rc.Close()
+		buf, _ := io.ReadAll(rc)
+		if string(buf) != "content1" {
+			t.Errorf("expected 'content1', got '%s'", string(buf))
+		}
+	}
+
+	zr2, err := zip.OpenReader(arc2)
+	if err != nil {
+		t.Fatalf("failed to open arc2: %v", err)
+	}
+	defer zr2.Close()
+
+	if len(zr2.File) != 1 {
+		t.Errorf("expected 1 file in arc2, got %d", len(zr2.File))
+	} else {
+		f := zr2.File[0]
+		if f.Name != "sub/file2.txt" {
+			t.Errorf("expected file name 'sub/file2.txt' in arc2, got '%s'", f.Name)
+		}
+		rc, err := f.Open()
+		if err != nil {
+			t.Fatalf("failed to open file in arc2: %v", err)
+		}
+		defer rc.Close()
+		buf, _ := io.ReadAll(rc)
+		if string(buf) != "content2" {
+			t.Errorf("expected 'content2', got '%s'", string(buf))
+		}
+	}
+}
+
+func TestCli_EachFile_TrimParents(t *testing.T) {
+	tmp := t.TempDir()
+	srcDir := filepath.Join(tmp, "src")
+	os.MkdirAll(filepath.Join(srcDir, "sub"), 0755)
+
+	os.WriteFile(filepath.Join(srcDir, "sub", "file2.txt"), []byte("content2"), 0644)
+
+	outDir := filepath.Join(tmp, "out_eachfile_trim.zip")
+
+	err := runZipper([]string{"zipper", "c", "-trim-parents", "-eachfile", outDir, filepath.Join(srcDir, "sub", "file2.txt")})
+	if err != nil {
+		t.Fatalf("zipper c with -eachfile and -trim-parents failed: %v", err)
+	}
+
+	targetDir := filepath.Join(tmp, "out_eachfile_trim")
+	arc := filepath.Join(targetDir, "file2.txt.zip")
+	if _, err := os.Stat(arc); err != nil {
+		t.Fatalf("expected archive %s to exist: %v", arc, err)
+	}
+
+	zr, err := zip.OpenReader(arc)
+	if err != nil {
+		t.Fatalf("failed to open arc: %v", err)
+	}
+	defer zr.Close()
+
+	if len(zr.File) != 1 {
+		t.Errorf("expected 1 file in arc, got %d", len(zr.File))
+	} else {
+		f := zr.File[0]
+		if f.Name != "file2.txt" {
+			t.Errorf("expected file name 'file2.txt' in arc, got '%s'", f.Name)
+		}
+	}
+}
+
+func TestCli_EachFile_ErrorsAndProgress(t *testing.T) {
+	tmp := t.TempDir()
+	srcDir := filepath.Join(tmp, "src")
+	os.MkdirAll(srcDir, 0755)
+	os.WriteFile(filepath.Join(srcDir, "file1.txt"), []byte("content1"), 0644)
+
+	// 1. Проверка ошибки при выводе в stdout
+	err := runZipper([]string{"zipper", "c", "-C", srcDir, "-eachfile", "-", "."})
+	if err == nil || !strings.Contains(err.Error(), "eachfile mode cannot be used with stdout") {
+		t.Errorf("expected error for stdout in eachfile mode, got: %v", err)
+	}
+
+	// 2. Проверка отрисовки прогресс-бара (вызывает инициализацию efProgresser)
+	outDir := filepath.Join(tmp, "out_eachfile_prog.zip")
+	oldStderr := os.Stderr
+	_, w, _ := os.Pipe()
+	os.Stderr = w
+
+	err = runZipper([]string{"zipper", "c", "-C", srcDir, "-progress", "-eachfile", outDir, "."})
+
+	w.Close()
+	os.Stderr = oldStderr
+
+	if err != nil {
+		t.Fatalf("zipper c with -progress and -eachfile failed: %v", err)
+	}
+
+	// 3. Проверка разбора составных расширений (например, .tar.zst)
+	tarZstOut := filepath.Join(tmp, "out_tar_zst.tar.zst")
+	err = runZipper([]string{"zipper", "c", "-C", srcDir, "-eachfile", tarZstOut, "."})
+	if err != nil {
+		t.Fatalf("zipper c with compound extension failed: %v", err)
+	}
+
+	targetDir := filepath.Join(tmp, "out_tar_zst")
+	arcPath := filepath.Join(targetDir, "file1.txt.tar.zst")
+	if _, err := os.Stat(arcPath); err != nil {
+		t.Errorf("expected compound extension archive %s to exist: %v", arcPath, err)
+	}
+}
