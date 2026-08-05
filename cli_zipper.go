@@ -316,7 +316,12 @@ func runZipper(args []string) error {
 					return err
 				}
 
-				a, err := archive.NewArchiver(indArchivePath, absChroot, opts)
+				fileOpts := opts
+				fileOpts.PathMapping = map[string]string{
+					path: filepath.Base(path),
+				}
+
+				a, err := archive.NewArchiver(indArchivePath, absChroot, fileOpts)
 				if err != nil {
 					return fmt.Errorf("failed to create archiver for %s: %w", indArchivePath, err)
 				}

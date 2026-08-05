@@ -485,8 +485,8 @@ func TestCli_EachFile(t *testing.T) {
 		t.Errorf("expected 1 file in arc2, got %d", len(zr2.File))
 	} else {
 		f := zr2.File[0]
-		if f.Name != "sub/file2.txt" {
-			t.Errorf("expected file name 'sub/file2.txt' in arc2, got '%s'", f.Name)
+		if f.Name != "file2.txt" {
+			t.Errorf("expected file name 'file2.txt' in arc2, got '%s'", f.Name)
 		}
 		rc, err := f.Open()
 		if err != nil {
