@@ -159,18 +159,49 @@ func newFallbackFS(filename string, opts Options) (FileSystem, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, _, err = archives.Identify(context.Background(), filename, f)
+	format, _, err := archives.Identify(context.Background(), filename, f)
 	if err != nil {
 		f.Close()
 		return nil, err
 	}
 
-	fsys, err := archives.FileSystem(context.Background(), filename, nil)
+	var fsys fs.FS
+	if opts.Password != "" {
+		if passwordFormat, ok := fallbackPasswordFormat(format, opts.Password); ok {
+			fsys = &archives.ArchiveFS{
+				Path:    filename,
+				Format:  passwordFormat,
+				Context: context.Background(),
+			}
+		}
+	}
+	if fsys == nil {
+		fsys, err = archives.FileSystem(context.Background(), filename, nil)
+	}
 	if err != nil {
 		f.Close()
 		return nil, err
 	}
 	return &fallbackFS{f: f, fsys: fsys}, nil
+}
+
+func fallbackPasswordFormat(format archives.Format, password string) (archives.Extractor, bool) {
+	switch format := format.(type) {
+	case archives.Rar:
+		format.Password = password
+		return format, true
+	case *archives.Rar:
+		format.Password = password
+		return format, true
+	case archives.SevenZip:
+		format.Password = password
+		return format, true
+	case *archives.SevenZip:
+		format.Password = password
+		return format, true
+	default:
+		return nil, false
+	}
 }
 
 func (f *fallbackFS) Open(name string) (fs.File, error) {

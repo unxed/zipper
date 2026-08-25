@@ -23,6 +23,7 @@ var fallbackCopyBufPool = sync.Pool{
 type fallbackExtractor struct {
 	filename string
 	chroot   string
+	password string
 
 	writtenBytes   int64
 	writtenEntries int64
@@ -55,7 +56,7 @@ func NewFallbackExtractor(filename, chroot string, opts Options) (Extractor, err
 	if err != nil {
 		return nil, err
 	}
-	return &fallbackExtractor{filename: filename, chroot: absChroot}, nil
+	return &fallbackExtractor{filename: filename, chroot: absChroot, password: opts.Password}, nil
 }
 
 func (e *fallbackExtractor) Extract(ctx context.Context) error {
@@ -70,10 +71,15 @@ func (e *fallbackExtractor) Extract(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to identify archive format for %s: %w", e.filename, err)
 	}
-
-	ex, ok := format.(archives.Extractor)
-	if !ok {
-		return fmt.Errorf("format %T does not support extraction", format)
+	var ex archives.Extractor
+	if passwordFormat, ok := fallbackPasswordFormat(format, e.password); ok {
+		ex = passwordFormat
+	} else {
+		var ok bool
+		ex, ok = format.(archives.Extractor)
+		if !ok {
+			return fmt.Errorf("format %T does not support extraction", format)
+		}
 	}
 
 	cleanChroot := filepath.Clean(e.chroot)

@@ -80,6 +80,49 @@ func TestFallbackEngine_7z(t *testing.T) {
 	}
 }
 
+func TestFallbackEngine_7zPassword(t *testing.T) {
+	tmp := t.TempDir()
+	src := filepath.Join(tmp, "src")
+	dst := filepath.Join(tmp, "dst")
+	os.MkdirAll(src, 0755)
+	os.WriteFile(filepath.Join(src, "secret.txt"), []byte("encrypted fallback data"), 0644)
+
+	arc := filepath.Join(tmp, "test_fallback_password.7z")
+	a, err := NewFallbackArchiver(arc, src, Options{Password: "correct"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, _ := os.Stat(filepath.Join(src, "secret.txt"))
+	if err := a.Archive(context.Background(), map[string]os.FileInfo{filepath.Join(src, "secret.txt"): info}); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.MkdirAll(dst, 0755); err != nil {
+		t.Fatal(err)
+	}
+	e, err := NewFallbackExtractor(arc, dst, Options{Password: "correct"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Extract(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	b, err := os.ReadFile(filepath.Join(dst, "secret.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) != "encrypted fallback data" {
+		t.Fatalf("expected encrypted fallback data, got %q", b)
+	}
+}
+
 type fallbackMockFileInfo struct {
 	name string
 	mode os.FileMode
