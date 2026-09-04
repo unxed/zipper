@@ -8,7 +8,7 @@ require (
 	github.com/unxed/par2 v0.1.2
 	github.com/unxed/sevenzip v0.0.0-20260826171606-a536eac9d163
 	github.com/unxed/tar v0.1.128
-	github.com/unxed/zip v0.1.129
+	github.com/unxed/zip v0.1.130
 )
 
 require (
@@ -31,10 +31,10 @@ require (
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/stangelandcl/ppmd v0.1.1 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
-	github.com/unxed/localecp v0.1.4 // indirect
+	github.com/unxed/localecp v0.1.6 // indirect
 	github.com/unxed/xz v0.1.41 // indirect
-	github.com/unxed/zipcharset v0.1.4 // indirect
-	github.com/unxed/zlib4go v0.1.15 // indirect
+	github.com/unxed/zipcharset v0.1.5 // indirect
+	github.com/unxed/zlib4go v0.1.16 // indirect
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
 	golang.org/x/crypto v0.53.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
