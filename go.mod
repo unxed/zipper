@@ -7,7 +7,7 @@ require (
 	github.com/unxed/archives v0.0.0-20260826172907-54073a78974d
 	github.com/unxed/par2 v0.1.3
 	github.com/unxed/sevenzip v0.0.0-20260826171606-a536eac9d163
-	github.com/unxed/tar v0.1.131
+	github.com/unxed/tar v0.1.132
 	github.com/unxed/zip v0.1.139
 )
 
