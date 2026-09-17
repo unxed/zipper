@@ -1,6 +1,7 @@
 package archive
 
 import (
+	stdtar "archive/tar"
 	"errors"
 	"fmt"
 	"io"
@@ -189,22 +190,32 @@ func (t *tarUpdater) Append(name string, size int64, r io.Reader) error {
 }
 
 func (t *tarUpdater) AppendFile(name, path string, fi os.FileInfo) error {
-	switch {
-	case fi.IsDir():
-		// tar.Updater writes regular file entries only. The files under
-		// the directory carry its path and extraction creates it for
-		// them; an empty directory has no entry to come back from.
-		return nil
-	case fi.Mode().IsRegular():
-		f, err := os.Open(path)
-		if err != nil {
+	var link string
+	if fi.Mode()&os.ModeSymlink != 0 {
+		var err error
+		if link, err = os.Readlink(path); err != nil {
 			return err
 		}
-		defer f.Close()
-		return t.u.AppendReader(name, fi.Size(), f)
-	default:
-		return fmt.Errorf("%w: %s is a %s, and tar.Updater writes regular files only", ErrUnsupportedAppend, path, fileKind(fi.Mode()))
 	}
+	// FileInfoHeader gives the entry its type, mode, times and owner; it
+	// refuses what tar has no type for, a socket.
+	hdr, err := stdtar.FileInfoHeader(fi, link)
+	if err != nil {
+		return fmt.Errorf("%w: %s is a %s: %v", ErrUnsupportedAppend, path, fileKind(fi.Mode()), err)
+	}
+	hdr.Name = name
+	if fi.IsDir() && !strings.HasSuffix(hdr.Name, "/") {
+		hdr.Name += "/"
+	}
+	if !fi.Mode().IsRegular() {
+		return t.u.AppendHeader(hdr, nil)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return t.u.AppendHeader(hdr, f)
 }
 
 func (t *tarUpdater) Remove(name string) error {

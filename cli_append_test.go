@@ -11,11 +11,14 @@ import (
 
 // TestCli_AppendDirectory: "zipper a" takes a directory and adds what is under
 // it. It used to open each target and copy it as a file, so a directory failed
-// with "read ...: is a directory". A zip archive gets the directories, the
-// empty one included, and the symbolic link as a link. A FIFO has no entry
-// and is skipped rather than opened, which would block.
+// with "read ...: is a directory". Both formats get the files, the directories,
+// the empty one included, and the symbolic link as a link. A tar archive gets
+// the FIFO as a FIFO; zip has no entry for one, and it is skipped rather than
+// opened, which would block. A tar archive with an embedded index -- which
+// every archive written under test gets -- is where appended entries used to
+// go unseen.
 func TestCli_AppendDirectory(t *testing.T) {
-	for _, ext := range []string{"zip"} {
+	for _, ext := range []string{"zip", "tar", "tar.zst"} {
 		t.Run(ext, func(t *testing.T) {
 			tmp := t.TempDir()
 			mustWriteTestFile(t, filepath.Join(tmp, "file1.txt"), "one")
@@ -48,14 +51,19 @@ func TestCli_AppendDirectory(t *testing.T) {
 					t.Errorf("%s: got %q, %v; want %q", name, b, err, want)
 				}
 			}
-			if _, err := os.Lstat(filepath.Join(dst, "adddir", "fifo")); !os.IsNotExist(err) {
-				t.Errorf("the FIFO was extracted (%v); it should have been skipped", err)
-			}
 			if fi, err := os.Stat(filepath.Join(dst, "adddir", "empty")); err != nil || !fi.IsDir() {
 				t.Errorf("adddir/empty is not a directory: %v", err)
 			}
 			if target, err := os.Readlink(filepath.Join(dst, "adddir", "link")); err != nil || target != "sub/f2.txt" {
 				t.Errorf("adddir/link: target %q, %v; want a link to sub/f2.txt", target, err)
+			}
+			fi, err := os.Lstat(filepath.Join(dst, "adddir", "fifo"))
+			if ext == "zip" {
+				if !os.IsNotExist(err) {
+					t.Errorf("the FIFO was extracted from zip (%v); it should have been skipped", err)
+				}
+			} else if err != nil || fi.Mode()&os.ModeNamedPipe == 0 {
+				t.Errorf("adddir/fifo did not come back as a FIFO: %v", err)
 			}
 		})
 	}
