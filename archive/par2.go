@@ -93,14 +93,105 @@ func RepairZipArchive(filename string) error {
 
 	// Стримим parity-данные во временный буфер
 	var parData bytes.Buffer
-	dataStart := parOffset + 30 + int64(len(".recovery.par2"))
+	var hdr [30]byte
+	if _, err := mvr.ReadAt(hdr[:], parOffset); err != nil {
+		return fmt.Errorf("failed to read recovery entry header: %w", err)
+	}
+	dataStart := parOffset + 30 + int64(binary.LittleEndian.Uint16(hdr[26:28])) + int64(binary.LittleEndian.Uint16(hdr[28:30]))
 	sr := io.NewSectionReader(mvr, dataStart, parSize)
 	if _, err := io.CopyBuffer(&parData, sr, make([]byte, 1024*1024)); err != nil {
 		return fmt.Errorf("failed to read recovery payload: %w", err)
 	}
 
-	srt := &sectionRepairTarget{target: mvr, size: parOffset}
-	return par2.RepairTargetData(srt, parData.Bytes())
+	_, fileDesc, _, _, err := par2.ParsePackets(parData.Bytes())
+	if err != nil || fileDesc == nil {
+		return fmt.Errorf("recovery payload is not a PAR2 stream: %v", err)
+	}
+	covered := int64(fileDesc.Length)
+
+	// The recovery data covers the archive up to the recovery entry and,
+	// in archives written since the entry was moved in front of the central
+	// directory, the directory that follows the entry's body too. Before,
+	// the entry followed the directory, and what it covered ended where it
+	// began.
+	if covered <= parOffset {
+		srt := &sectionRepairTarget{target: mvr, size: parOffset}
+		return par2.RepairTargetData(srt, parData.Bytes())
+	}
+	cdStart := dataStart + parSize
+	if cdStart+(covered-parOffset) > totalSize {
+		return fmt.Errorf("recovery data covers %d bytes, more than the archive holds", covered)
+	}
+	target := &rangesRepairTarget{target: mvr, ranges: []repairRange{
+		{virtual: 0, file: 0, length: parOffset},
+		{virtual: parOffset, file: cdStart, length: covered - parOffset},
+	}}
+	return par2.RepairTargetData(target, parData.Bytes())
+}
+
+// repairRange maps length bytes of the stream the recovery data covers,
+// starting at virtual, onto the archive starting at file.
+type repairRange struct {
+	virtual, file, length int64
+}
+
+// rangesRepairTarget presents ranges of an archive as the one contiguous
+// stream the recovery data was computed over.
+type rangesRepairTarget struct {
+	target VolumeReaderRW
+	ranges []repairRange
+}
+
+func (t *rangesRepairTarget) size() int64 {
+	last := t.ranges[len(t.ranges)-1]
+	return last.virtual + last.length
+}
+
+func (t *rangesRepairTarget) ReadAt(p []byte, off int64) (int, error) {
+	n, err := t.each(p, off, t.target.ReadAt)
+	if err == nil && n < len(p) {
+		err = io.EOF
+	}
+	return n, err
+}
+
+// WriteAt drops what falls past the end of the stream, as sectionRepairTarget
+// does: the repair writes whole slices, and the last one is padded.
+func (t *rangesRepairTarget) WriteAt(p []byte, off int64) (int, error) {
+	return t.each(p, off, t.target.WriteAt)
+}
+
+func (t *rangesRepairTarget) each(p []byte, off int64, op func([]byte, int64) (int, error)) (int, error) {
+	if off >= t.size() {
+		return 0, io.EOF
+	}
+	if rest := t.size() - off; int64(len(p)) > rest {
+		p = p[:rest]
+	}
+	done := 0
+	for _, r := range t.ranges {
+		if done == len(p) {
+			break
+		}
+		pos := off + int64(done)
+		if pos >= r.virtual+r.length {
+			continue
+		}
+		at := pos - r.virtual
+		chunk := p[done:]
+		if int64(len(chunk)) > r.length-at {
+			chunk = chunk[:r.length-at]
+		}
+		n, err := op(chunk, r.file+at)
+		done += n
+		if err != nil && err != io.EOF {
+			return done, err
+		}
+		if n < len(chunk) {
+			return done, io.ErrUnexpectedEOF
+		}
+	}
+	return done, nil
 }
 
 // RepairTarArchive извлекает .tarext/par2/recovery.par2 из TAR-архива (Stream 2)
