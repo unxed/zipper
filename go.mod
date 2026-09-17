@@ -8,7 +8,7 @@ require (
 	github.com/unxed/par2 v0.1.2
 	github.com/unxed/sevenzip v0.0.0-20260826171606-a536eac9d163
 	github.com/unxed/tar v0.1.128
-	github.com/unxed/zip v0.1.131
+	github.com/unxed/zip v0.1.132-0.20260906155754-37a3fc4841ae
 )
 
 require (
@@ -16,7 +16,6 @@ require (
 	github.com/andybalholm/brotli v1.2.2 // indirect
 	github.com/bodgit/plumbing v1.3.0 // indirect
 	github.com/bodgit/windows v1.0.1 // indirect
-	github.com/dovydenkovas/ppmd v0.1.1 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/klauspost/compress v1.19.2 // indirect
