@@ -1,6 +1,7 @@
 package archive
 
 import (
+	"encoding/binary"
 	"io"
 	"os"
 	"path/filepath"
@@ -62,6 +63,13 @@ func DetectFormat(filename string) string {
 		// The first volume of a ZIP split archive starts with the
 		// spanning marker rather than with a local file header.
 		if n >= 4 && string(buf[:4]) == "PK\x07\x08" {
+			return "zip"
+		}
+		// A self-extracting archive is a zip behind an executable, and
+		// so is any other file with something in front of the archive.
+		// The end of central directory record at the end of the file is
+		// what says so, and it is also what the reader goes by.
+		if hasZipCentralDirectory(f) {
 			return "zip"
 		}
 		if n >= 262 && string(buf[257:262]) == "ustar" {
@@ -165,4 +173,59 @@ func isSplitZipVolume(name string) bool {
 		}
 	}
 	return true
+}
+
+// zipEndRecordLen is the length of a zip end of central directory record
+// without its comment.
+const zipEndRecordLen = 22
+
+// hasZipCentralDirectory reports whether the file ends with a zip end of
+// central directory record whose central directory really is where the record
+// places it. Anything before the archive -- the executable stub of a
+// self-extracting archive, for instance -- is left for the zip reader, which
+// works out the offset of the entries itself.
+func hasZipCentralDirectory(f *os.File) bool {
+	info, err := f.Stat()
+	if err != nil {
+		return false
+	}
+	size := info.Size()
+	if size < zipEndRecordLen {
+		return false
+	}
+	// The record is 22 bytes plus a comment of up to 64 KiB.
+	tailLen := int64(zipEndRecordLen + 0xffff)
+	if tailLen > size {
+		tailLen = size
+	}
+	tail := make([]byte, tailLen)
+	if _, err := f.ReadAt(tail, size-tailLen); err != nil {
+		return false
+	}
+
+	for p := len(tail) - zipEndRecordLen; p >= 0; p-- {
+		if string(tail[p:p+4]) != "PK\x05\x06" {
+			continue
+		}
+		directorySize := int64(binary.LittleEndian.Uint32(tail[p+12 : p+16]))
+		directoryOffset := int64(binary.LittleEndian.Uint32(tail[p+16 : p+20]))
+		recordOffset := size - tailLen + int64(p)
+		// Where the directory starts, counted from the end of it, and
+		// where the record says it starts; a zip behind a stub answers
+		// one or the other, depending on whether the tool that wrote it
+		// counted the stub in.
+		for _, start := range []int64{recordOffset - directorySize, directoryOffset} {
+			if start < 0 || start+4 > size {
+				continue
+			}
+			var signature [4]byte
+			if _, err := f.ReadAt(signature[:], start); err != nil {
+				continue
+			}
+			if string(signature[:]) == "PK\x01\x02" || (directorySize == 0 && start == recordOffset) {
+				return true
+			}
+		}
+	}
+	return false
 }
