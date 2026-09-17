@@ -35,7 +35,7 @@ A high-fidelity cross-platform console archiver built on top of high-performance
 | **Alternative Data Streams** (Win) | `Find*StreamW` \| Virtual files (`file:stream`) | `Find*StreamW` \| Virtual files (`file:stream`) |
 | **High-precision Timestamps** (Win/*nix) | `unix.Lutimes` \| PAX float64 UnixNano | `unix.Lutimes` / `Chtimes` \| Extra Fields `0x000a` / `0x5455` |
 | **Symlinks** (Win/*nix) | `os.Symlink` \| TAR Typeflag `2` | `os.Symlink` \| Mode flag + File payload |
-| **Hardlinks** (*nix) | `os.Link` \| TAR Typeflag `1` | `os.Link` \| `Store` method + Extra Field `0x000d` |
+| **Hardlinks** (*nix) | `os.Link` \| TAR Typeflag `1` | `os.Link` \| `Store` method + Extra Field `0x000d` + external attribute bit `0x800` ([spec](https://github.com/unxed/zip/blob/main/f4zip.md)) |
 | **Special Files (Devices/FIFOs)** (*nix) | `unix.Mknod` \| TAR Typeflag `3`/`4`/`6` | `unix.Mknod` \| Extra Field `0x000d` |
 | **Owner UID/GID** (*nix) | `os.Lchown` \| TAR header fields | `os.Lchown` \| Extra Field `0x7875` |
 | **Owner/Group Names** (*nix) | `os.Lchown` \| TAR header fields | `os.Lchown` \| Extra Field `0x7817` ([spec](https://github.com/unxed/zip/blob/main/f4zip.md)) |
