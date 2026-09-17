@@ -118,7 +118,7 @@ func runZipper(args []string) error {
 	fs.IntVar(&recoveryPct, "rr", 0, "Add recovery record (percentage, e.g. 5 for 5%)")
 	fs.BoolVar(&recoveryExternal, "rr-external", false, "Write recovery record to a separate .par2 file instead of embedding it")
 	fs.BoolVar(&lock, "lock", false, "Lock archive to prevent further modifications")
-	fs.StringVar(&splitSizeStr, "v", "", "Volume size (e.g. 100M, 1G) for multi-volume archives")
+	fs.StringVar(&splitSizeStr, "v", "", "Volume size (e.g. 100M, 1G) for multi-volume archives, named name.001, name.002, ...")
 	fs.BoolVar(&noPlatformMeta, "no-platform-meta", false, "Do not include local platform metadata in ZIP")
 	fs.BoolVar(&noTimes, "no-times", false, "Do not restore file modification times")
 	fs.IntVar(&stripComp, "strip-components", 0, "Strip number of leading components from file names")

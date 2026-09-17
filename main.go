@@ -165,7 +165,7 @@ func showHelp(base string) {
 		fmt.Println("  -rr <pct>      Add recovery record (percentage, e.g. 5 for 5%)")
 		fmt.Println("  -rr-external   Write recovery record to a separate .par2 file instead of embedding it")
 		fmt.Println("  -lock          Lock archive to prevent further modifications")
-		fmt.Println("  -v <size>      Volume size (e.g. 10M, 1G) for multi-volume archives")
+		fmt.Println("  -v <size>      Volume size (e.g. 10M, 1G) for multi-volume archives, named name.001, name.002, ...")
 		fmt.Println("  -no-platform-meta Do not include local platform metadata in ZIP")
 		fmt.Println("  -no-times      Do not restore file modification times")
 		fmt.Println("  -strip-components <num> Strip <num> leading components from file names")

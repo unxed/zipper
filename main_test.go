@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -150,28 +151,31 @@ func TestCliMultiVolume(t *testing.T) {
 		t.Fatalf("failed to create split archive via CLI: %v", err)
 	}
 
-	// Проверяем физическое наличие томов
-	prefix := archivePath[:len(archivePath)-len(".zip")]
-	if _, err := os.Stat(prefix + ".z01"); err != nil {
-		t.Error("missing volume .z01 on disk")
+	// Тома названы по архиву, как у 7-Zip: split_archive.zip.001, .002...
+	// Файла с именем самого архива нет.
+	for _, part := range []string{".001", ".002", ".005"} {
+		if _, err := os.Stat(archivePath + part); err != nil {
+			t.Errorf("missing volume %s on disk", part)
+		}
 	}
-	if _, err := os.Stat(archivePath); err != nil {
-		t.Error("missing main volume .zip on disk")
-	}
-
-	// Эмулируем запуск извлечения архива
-	os.MkdirAll(dstDir, 0755)
-	err = runZipper([]string{"zipper", "x", "-C", dstDir, archivePath})
-	if err != nil {
-		t.Fatalf("failed to extract split archive via CLI: %v", err)
+	if _, err := os.Stat(archivePath); !os.IsNotExist(err) {
+		t.Errorf("a file was written under the archive name itself: %v", err)
 	}
 
-	extractedData, err := os.ReadFile(filepath.Join(dstDir, "large.txt"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(extractedData) != string(data) {
-		t.Error("extracted split archive content mismatch with original data")
+	// Извлекаем и по имени архива, и по имени первого тома
+	for i, name := range []string{archivePath, archivePath + ".001"} {
+		dst := filepath.Join(dstDir, fmt.Sprint(i))
+		os.MkdirAll(dst, 0755)
+		if err := runZipper([]string{"zipper", "x", "-C", dst, name}); err != nil {
+			t.Fatalf("failed to extract split archive via CLI by %s: %v", name, err)
+		}
+		extractedData, err := os.ReadFile(filepath.Join(dst, "large.txt"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(extractedData) != string(data) {
+			t.Errorf("extracted split archive content mismatch with original data (opened by %s)", name)
+		}
 	}
 }
 
