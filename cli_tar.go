@@ -198,22 +198,18 @@ func runTar(args []string) error {
 		if err != nil {
 			return err
 		}
-		defer u.Close()
-
-		return appendTargets(u, "", files, false, nil)
+		return finishUpdate(u, appendTargets(u, "", files, false, nil))
 	} else if mode == "d" {
 		u, err := archive.NewUpdater(archivePath, opts)
 		if err != nil {
 			return err
 		}
-		defer u.Close()
-
 		for _, f := range files {
-			if err := u.Remove(f); err != nil {
-				return err
+			if err = u.Remove(f); err != nil {
+				break
 			}
 		}
-		return nil
+		return finishUpdate(u, err)
 	}
 	return fmt.Errorf("tar: must specify action (-c, -x, -r, or --delete)")
 }

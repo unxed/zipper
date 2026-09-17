@@ -398,9 +398,7 @@ func runZipper(args []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to initialize updater: %w", err)
 		}
-		defer u.Close()
-
-		return appendTargets(u, absChroot, parsedArgs[1:], trimParents, excludes)
+		return finishUpdate(u, appendTargets(u, absChroot, parsedArgs[1:], trimParents, excludes))
 
 	case "d":
 		if len(parsedArgs) < 2 {
@@ -410,15 +408,13 @@ func runZipper(args []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to initialize updater: %w", err)
 		}
-		defer u.Close()
-
 		for _, target := range parsedArgs[1:] {
-			err = u.Remove(filepath.ToSlash(target))
-			if err != nil {
-				return fmt.Errorf("failed to delete %s: %w", target, err)
+			if err = u.Remove(filepath.ToSlash(target)); err != nil {
+				err = fmt.Errorf("failed to delete %s: %w", target, err)
+				break
 			}
 		}
-		return nil
+		return finishUpdate(u, err)
 
 	case "x":
 		absOut, err := filepath.Abs(outDir)
@@ -500,6 +496,19 @@ func parseSize(s string) (int64, error) {
 		return 0, err
 	}
 	return val * multiplier, nil
+}
+
+// finishUpdate closes u and returns err, or the error closing gave if there
+// was none before. Close is where the zip updater writes the central directory
+// and the tar updater writes a compressed archive anew with what was appended,
+// so a failure there is the command's failure; deferred and discarded, it left
+// the command reporting success over an archive that had not changed or was
+// not complete.
+func finishUpdate(u archive.Updater, err error) error {
+	if cerr := u.Close(); err == nil {
+		return cerr
+	}
+	return err
 }
 
 // appendTargets adds each target to the archive u updates. A directory goes

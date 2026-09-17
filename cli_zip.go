@@ -69,13 +69,12 @@ func runZip(args []string) error {
 		if err != nil {
 			return err
 		}
-		defer u.Close()
 		for _, f := range files {
-			if err := u.Remove(f); err != nil {
-				return err
+			if err = u.Remove(f); err != nil {
+				break
 			}
 		}
-		return nil
+		return finishUpdate(u, err)
 	}
 
 	if err := checkOverwrite(archivePath); err != nil {
