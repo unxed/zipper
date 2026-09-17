@@ -200,22 +200,7 @@ func runTar(args []string) error {
 		}
 		defer u.Close()
 
-		for _, f := range files {
-			fi, err := os.Stat(f)
-			if err != nil {
-				return err
-			}
-			file, err := os.Open(f)
-			if err != nil {
-				return err
-			}
-			err = u.Append(f, fi.Size(), file)
-			file.Close()
-			if err != nil {
-				return err
-			}
-		}
-		return nil
+		return appendTargets(u, "", files, false, nil)
 	} else if mode == "d" {
 		u, err := archive.NewUpdater(archivePath, opts)
 		if err != nil {

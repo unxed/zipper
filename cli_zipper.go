@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -397,37 +400,7 @@ func runZipper(args []string) error {
 		}
 		defer u.Close()
 
-		for _, target := range parsedArgs[1:] {
-			targetPath := target
-			if !filepath.IsAbs(targetPath) {
-				targetPath = filepath.Join(absChroot, targetPath)
-			}
-			targetPath = filepath.Clean(targetPath)
-			baseDir := filepath.Dir(targetPath)
-
-			fi, err := os.Stat(targetPath)
-			if err != nil {
-				return fmt.Errorf("failed to read file info for %s: %w", targetPath, err)
-			}
-			f, err := os.Open(targetPath)
-			if err != nil {
-				return fmt.Errorf("failed to open file %s: %w", targetPath, err)
-			}
-
-			nameInArchive := filepath.ToSlash(target)
-			if trimParents {
-				rel, relErr := filepath.Rel(baseDir, targetPath)
-				if relErr == nil {
-					nameInArchive = filepath.ToSlash(rel)
-				}
-			}
-			err = u.Append(nameInArchive, fi.Size(), f)
-			f.Close()
-			if err != nil {
-				return fmt.Errorf("failed to append %s: %w", target, err)
-			}
-		}
-		return nil
+		return appendTargets(u, absChroot, parsedArgs[1:], trimParents, excludes)
 
 	case "d":
 		if len(parsedArgs) < 2 {
@@ -527,4 +500,63 @@ func parseSize(s string) (int64, error) {
 		return 0, err
 	}
 	return val * multiplier, nil
+}
+
+// appendTargets adds each target to the archive u updates. A directory goes
+// in with everything under it, walked as c walks its targets: the same
+// excludes apply, and a symbolic link is added as a link rather than
+// followed. A file the archive's updater has no entry for is skipped with a
+// warning. Each name is the target as given, or its last element with
+// trimParents, followed by the path below it.
+func appendTargets(u archive.Updater, absChroot string, targets []string, trimParents bool, excludes []string) error {
+	for _, target := range targets {
+		targetPath := target
+		if !filepath.IsAbs(targetPath) {
+			targetPath = filepath.Join(absChroot, targetPath)
+		}
+		targetPath = filepath.Clean(targetPath)
+
+		rootName := path.Clean(filepath.ToSlash(target))
+		if trimParents {
+			rootName = filepath.Base(targetPath)
+		}
+
+		err := filepath.WalkDir(targetPath, func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			for _, ex := range excludes {
+				if matched, _ := filepath.Match(ex, d.Name()); matched {
+					if d.IsDir() {
+						return filepath.SkipDir
+					}
+					return nil
+				}
+			}
+			info, err := d.Info()
+			if err != nil {
+				return err
+			}
+			rel, err := filepath.Rel(targetPath, p)
+			if err != nil {
+				return err
+			}
+			name := rootName
+			if rel != "." {
+				name = path.Join(rootName, filepath.ToSlash(rel))
+			}
+			if err := u.AppendFile(name, p, info); err != nil {
+				if errors.Is(err, archive.ErrUnsupportedAppend) {
+					fmt.Fprintf(os.Stderr, "Warning: skipped: %v\n", err)
+					return nil
+				}
+				return fmt.Errorf("failed to append %s: %w", p, err)
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
