@@ -60,14 +60,16 @@ func NewFallbackExtractor(filename, chroot string, opts Options) (Extractor, err
 }
 
 func (e *fallbackExtractor) Extract(ctx context.Context) error {
-	f, err := os.Open(e.filename)
+	// OpenInput also joins the volumes of a split archive (name.7z.001,
+	// name.7z.002, ...); a single volume alone cannot be read.
+	in, err := OpenInput(e.filename)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer in.Close()
 
 	// Используем эвристику mholt/archives для определения формата "на лету"
-	format, stream, err := archives.Identify(ctx, e.filename, f)
+	format, stream, err := archives.Identify(ctx, e.filename, in)
 	if err != nil {
 		return fmt.Errorf("failed to identify archive format for %s: %w", e.filename, err)
 	}

@@ -150,39 +150,55 @@ func (t *tarFS) Close() error {
 }
 
 type fallbackFS struct {
-	f    *os.File
+	in   *Input
 	fsys fs.FS
 }
 
 func newFallbackFS(filename string, opts Options) (FileSystem, error) {
-	f, err := os.Open(filename)
+	in, err := OpenInput(filename)
 	if err != nil {
 		return nil, err
 	}
-	format, _, err := archives.Identify(context.Background(), filename, f)
+	format, _, err := archives.Identify(context.Background(), filename, in)
 	if err != nil {
-		f.Close()
+		in.Close()
 		return nil, err
+	}
+
+	// A split archive exists only as the joined stream of its volumes (see
+	// OpenInput). Every other archive is still read by path, as before.
+	var stream *io.SectionReader
+	if in.Split() {
+		stream = in.SectionReader
 	}
 
 	var fsys fs.FS
 	if opts.Password != "" {
 		if passwordFormat, ok := fallbackPasswordFormat(format, opts.Password); ok {
-			fsys = &archives.ArchiveFS{
-				Path:    filename,
+			archiveFS := &archives.ArchiveFS{
 				Format:  passwordFormat,
 				Context: context.Background(),
 			}
+			if stream != nil {
+				archiveFS.Stream = stream
+			} else {
+				archiveFS.Path = filename
+			}
+			fsys = archiveFS
 		}
 	}
 	if fsys == nil {
-		fsys, err = archives.FileSystem(context.Background(), filename, nil)
+		if stream != nil {
+			fsys, err = archives.FileSystem(context.Background(), filename, stream)
+		} else {
+			fsys, err = archives.FileSystem(context.Background(), filename, nil)
+		}
 	}
 	if err != nil {
-		f.Close()
+		in.Close()
 		return nil, err
 	}
-	return &fallbackFS{f: f, fsys: fsys}, nil
+	return &fallbackFS{in: in, fsys: fsys}, nil
 }
 
 func fallbackPasswordFormat(format archives.Format, password string) (archives.Extractor, bool) {
@@ -221,7 +237,7 @@ func (f *fallbackFS) Close() error {
 	if closer, ok := f.fsys.(io.Closer); ok {
 		err1 = closer.Close()
 	}
-	err2 := f.f.Close()
+	err2 := f.in.Close()
 	if err1 != nil {
 		return err1
 	}
