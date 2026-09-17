@@ -36,6 +36,12 @@ func DetectFormat(filename string) string {
 	if strings.HasSuffix(lower, ".zip") {
 		return "zip"
 	}
+	// archive.z01, archive.z02, ... are the volumes of a ZIP split archive,
+	// whose last volume is the archive.zip beside them. Read as a file of
+	// their own they have no central directory at all.
+	if isSplitZipVolume(lower) {
+		return "zip"
+	}
 	if strings.HasSuffix(lower, ".tar") || strings.Contains(lower, ".tar.") || strings.HasSuffix(lower, ".tgz") || strings.HasSuffix(lower, ".txz") || strings.HasSuffix(lower, ".tbz2") || strings.HasSuffix(lower, ".tzst") {
 		return "tar"
 	}
@@ -51,6 +57,11 @@ func DetectFormat(filename string) string {
 		buf := make([]byte, 262)
 		n, _ := io.ReadFull(f, buf)
 		if n >= 4 && string(buf[:4]) == "PK\x03\x04" {
+			return "zip"
+		}
+		// The first volume of a ZIP split archive starts with the
+		// spanning marker rather than with a local file header.
+		if n >= 4 && string(buf[:4]) == "PK\x07\x08" {
 			return "zip"
 		}
 		if n >= 262 && string(buf[257:262]) == "ustar" {
@@ -138,4 +149,20 @@ func NewExtractor(filename, chroot string, opts Options) (Extractor, error) {
 		return &spoolExtractor{Extractor: e, tempFile: tempFile}, nil
 	}
 	return e, nil
+}
+
+// isSplitZipVolume reports whether name is a ZIP split volume -- .z01, .z02
+// and so on, the names WinZip, WinRAR and "zip -s" give the parts before the
+// last one. The name is expected in lower case.
+func isSplitZipVolume(name string) bool {
+	ext := filepath.Ext(name)
+	if len(ext) < 4 || !strings.HasPrefix(ext, ".z") {
+		return false
+	}
+	for _, c := range ext[2:] {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
 }
