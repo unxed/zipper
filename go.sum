@@ -98,8 +98,3 @@ gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 github.com/unxed/zip v0.1.140-0.20260924053511-cd3c7523a2c8 h1:u6i5l73TNmIew8j0+zu1UCASjBc2v//GOhpEdbYk1K0=
 github.com/unxed/zip v0.1.140-0.20260924053511-cd3c7523a2c8/go.mod h1:kwpxpVojyMh4lA8rSumMPBB8R2/vZiGXbv3EgoAB0RA=
-
-github.com/unxed/archives v0.0.0-20260924070254-993171f5a88d h1:ZF7/Rz4TgolfL2Nw2NWj/wnOouhntFVYRq3quWg7P4Y=
-github.com/unxed/archives v0.0.0-20260924070254-993171f5a88d/go.mod h1:ClyE/fYGwppv2n7Z4gCm2GqlRcoYvEpNiL7Hte9tSlk=
-github.com/unxed/sevenzip v0.0.0-20260924071214-2857f0bea623 h1:IMpfRdBFN8F7+tg1AbjfOroh+YIEx848gjjjgNKcA20=
-github.com/unxed/sevenzip v0.0.0-20260924071214-2857f0bea623/go.mod h1:GhuB6Lq1xCpP1sps+horjZ8lgiKPJcy2zUX3prla9wc=
