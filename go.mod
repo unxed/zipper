@@ -3,10 +3,10 @@ module github.com/unxed/zipper
 go 1.25.5
 
 require (
-	github.com/nwaples/rardecode/v2 v2.2.3
-	github.com/unxed/archives v0.0.0-20260925075031-27e0c6794474
+	github.com/nwaples/rardecode/v2 v2.4.1
+	github.com/unxed/archives v0.1.0
 	github.com/unxed/par2 v0.1.3
-	github.com/unxed/sevenzip v0.0.0-20260925074956-1fd8e92986d5
+	github.com/unxed/sevenzip v0.1.4
 	github.com/unxed/tar v0.1.132
 	github.com/unxed/zip v0.1.140
 )
