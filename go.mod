@@ -4,11 +4,11 @@ go 1.25.5
 
 require (
 	github.com/nwaples/rardecode/v2 v2.4.1
-	github.com/unxed/archives v0.1.2
+	github.com/unxed/archives v0.1.3
 	github.com/unxed/par2 v0.1.3
-	github.com/unxed/sevenzip v0.1.6
-	github.com/unxed/tar v0.1.134
-	github.com/unxed/zip v0.1.142
+	github.com/unxed/sevenzip v0.1.7
+	github.com/unxed/tar v0.1.135
+	github.com/unxed/zip v0.1.143
 )
 
 require (
@@ -31,7 +31,7 @@ require (
 	github.com/stangelandcl/ppmd v0.1.1 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/unxed/localecp v0.1.6 // indirect
-	github.com/unxed/xz v0.1.46 // indirect
+	github.com/unxed/xz v0.1.47 // indirect
 	github.com/unxed/zipcharset v0.1.5 // indirect
 	github.com/unxed/zlib4go v0.1.16 // indirect
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
