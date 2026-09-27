@@ -1,7 +1,9 @@
 package archive
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -120,6 +122,126 @@ func TestFallbackEngine_7zPassword(t *testing.T) {
 	}
 	if string(b) != "encrypted fallback data" {
 		t.Fatalf("expected encrypted fallback data, got %q", b)
+	}
+}
+
+// TestFallbackProgressReader_TracksBytes is a deterministic unit test of the
+// progressReader wrapper used by fallbackExtractor.Extract to feed
+// Written() (see issue #17: the progress bar showed nothing for .7z
+// extraction). It verifies that every byte read through the wrapper is
+// reflected in the extractor's atomic byte counter immediately, without
+// needing to go through an actual archive.
+func TestFallbackProgressReader_TracksBytes(t *testing.T) {
+	e := &fallbackExtractor{}
+	data := bytes.Repeat([]byte("0123456789"), 1000) // 10000 bytes
+	pr := &progressReader{r: bytes.NewReader(data), e: e}
+
+	if b, _ := e.Written(); b != 0 {
+		t.Fatalf("expected 0 bytes before any read, got %d", b)
+	}
+
+	buf := make([]byte, 777) // odd size to exercise partial reads
+	var total int64
+	for {
+		n, err := pr.Read(buf)
+		total += int64(n)
+		if b, _ := e.Written(); b != total {
+			t.Fatalf("Written() = %d, want %d after reading %d bytes", b, total, n)
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("unexpected read error: %v", err)
+		}
+	}
+
+	if total != int64(len(data)) {
+		t.Fatalf("read %d bytes total, want %d", total, len(data))
+	}
+}
+
+// TestIssue17_FallbackExtractor7zProgress reproduces the scenario from
+// https://github.com/unxed/zipper/issues/17: extracting a .7z archive
+// through fallbackExtractor must drive the same archive.Progresser
+// interface (Written()) that cli_progress.go's startProgressBar polls to
+// render the progress bar for zip/tar. It asserts Written() is zero before
+// extraction and reports the correct totals afterwards, for a multi-file
+// 7z archive.
+func TestIssue17_FallbackExtractor7zProgress(t *testing.T) {
+	tmp := t.TempDir()
+	src := filepath.Join(tmp, "src")
+	dst := filepath.Join(tmp, "dst")
+	if err := os.MkdirAll(src, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	contents := map[string][]byte{
+		"a.bin": bytes.Repeat([]byte("A"), 200*1024),
+		"b.bin": bytes.Repeat([]byte("B"), 350*1024),
+		"c.bin": bytes.Repeat([]byte("C"), 90*1024),
+	}
+	var wantBytes int64
+	files := map[string]os.FileInfo{}
+	for name, data := range contents {
+		p := filepath.Join(src, name)
+		if err := os.WriteFile(p, data, 0644); err != nil {
+			t.Fatal(err)
+		}
+		info, err := os.Stat(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		files[p] = info
+		wantBytes += int64(len(data))
+	}
+	wantEntries := int64(len(contents))
+
+	arc := filepath.Join(tmp, "issue17.7z")
+	a, err := NewFallbackArchiver(arc, src, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Archive(context.Background(), files); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.MkdirAll(dst, 0755); err != nil {
+		t.Fatal(err)
+	}
+	e, err := NewFallbackExtractor(arc, dst, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer e.Close()
+
+	if b, n := e.Written(); b != 0 || n != 0 {
+		t.Fatalf("Written() before Extract = (%d, %d), want (0, 0)", b, n)
+	}
+
+	if err := e.Extract(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	gotBytes, gotEntries := e.Written()
+	if gotBytes != wantBytes {
+		t.Errorf("Written() bytes = %d, want %d", gotBytes, wantBytes)
+	}
+	if gotEntries != wantEntries {
+		t.Errorf("Written() entries = %d, want %d", gotEntries, wantEntries)
+	}
+
+	for name, data := range contents {
+		got, err := os.ReadFile(filepath.Join(dst, name))
+		if err != nil {
+			t.Fatalf("reading extracted %s: %v", name, err)
+		}
+		if !bytes.Equal(got, data) {
+			t.Errorf("content mismatch for %s", name)
+		}
 	}
 }
 
