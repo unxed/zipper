@@ -252,6 +252,15 @@ func runZipper(args []string) error {
 			opts.PathMapping = pathMapping
 		}
 
+		// testHookFilesCollected, when set by a test, runs right here: the
+		// directory walk has finished and files holds everything it saw,
+		// but archiving has not started yet. It lets a test simulate an
+		// external process deleting one of the walked files in the window
+		// between the walk seeing it and the archiver opening it.
+		if testHookFilesCollected != nil {
+			testHookFilesCollected(files)
+		}
+
 		if eachFile {
 			if archivePath == "-" {
 				return fmt.Errorf("eachfile mode cannot be used with stdout")
@@ -351,6 +360,15 @@ func runZipper(args []string) error {
 				}
 
 				if archiveErr != nil {
+					// The source file vanished after the walk saw it but
+					// before this archiver opened it -- another process
+					// deleted it out from under us. Skip it with a warning,
+					// like tar and zip do, instead of failing the whole run.
+					if errors.Is(archiveErr, os.ErrNotExist) {
+						fmt.Fprintf(os.Stderr, "Warning: skipping %s: file no longer exists: %v\n", path, archiveErr)
+						os.Remove(indArchivePath)
+						continue
+					}
 					return archiveErr
 				}
 				if closeErr != nil {
@@ -377,7 +395,41 @@ func runZipper(args []string) error {
 		if progress {
 			stopProgress = startProgressBar(a, totalBytes, totalEntries, "Archiving")
 		}
-		archiveErr := a.Archive(context.Background(), files)
+
+		// A file can be deleted by another process after the walk above
+		// saw it but before the archiver gets around to opening it. The
+		// underlying zip/tar/fallback archivers abort the whole batch on
+		// the first open error, so on a missing file we drop it from the
+		// set and start over without it, warning on stderr instead of
+		// failing the entire archive -- the way tar and zip do. Any other
+		// error (permission denied, and so on) is still fatal.
+		var archiveErr error
+		for {
+			archiveErr = a.Archive(context.Background(), files)
+			if archiveErr == nil {
+				break
+			}
+			missing, ok := missingFilePath(archiveErr, files)
+			if !ok {
+				break
+			}
+			fmt.Fprintf(os.Stderr, "Warning: skipping %s: file no longer exists: %v\n", missing, archiveErr)
+			delete(files, missing)
+
+			_ = a.Close()
+			if stopProgress != nil {
+				stopProgress()
+				stopProgress = nil
+			}
+
+			a, err = archive.NewArchiver(archivePath, absChroot, opts)
+			if err != nil {
+				return fmt.Errorf("failed to recreate archiver after skipping %s: %w", missing, err)
+			}
+			if progress {
+				stopProgress = startProgressBar(a, totalBytes, totalEntries, "Archiving")
+			}
+		}
 		if stopProgress != nil {
 			stopProgress()
 		}
@@ -476,6 +528,42 @@ func runZipper(args []string) error {
 	}
 }
 
+// testHookFilesCollected, when set by a test, is called for the "c" command
+// right after the directory walk has built files and before archiving
+// starts. It exists so a test can simulate a file being deleted by another
+// process in the window between the walk seeing it and the archiver opening
+// it, without needing a real, timing-dependent race. It is nil, and does
+// nothing, outside of tests.
+var testHookFilesCollected func(files map[string]os.FileInfo)
+
+// missingFilePath reports whether err is the archiver failing to open one of
+// files because it no longer exists on disk -- most likely deleted by
+// another process after the directory walk saw it but before the archiver
+// got to it -- and if so, which key in files that was. Any other error
+// (permission denied, and so on) makes it report false, so the caller
+// treats it as fatal rather than silently dropping the file.
+func missingFilePath(err error, files map[string]os.FileInfo) (string, bool) {
+	if !errors.Is(err, os.ErrNotExist) {
+		return "", false
+	}
+	var pathErr *fs.PathError
+	if !errors.As(err, &pathErr) {
+		return "", false
+	}
+	if _, ok := files[pathErr.Path]; ok {
+		return pathErr.Path, true
+	}
+	// The archiver may have cleaned the path differently than the walk
+	// did; fall back to comparing cleaned forms before giving up.
+	clean := filepath.Clean(pathErr.Path)
+	for k := range files {
+		if filepath.Clean(k) == clean {
+			return k, true
+		}
+	}
+	return "", false
+}
+
 func parseSize(s string) (int64, error) {
 	if s == "" {
 		return 0, nil
@@ -560,6 +648,14 @@ func appendTargets(u archive.Updater, absChroot string, targets []string, trimPa
 			if err := u.AppendFile(name, p, info); err != nil {
 				if errors.Is(err, archive.ErrUnsupportedAppend) {
 					fmt.Fprintf(os.Stderr, "Warning: skipped: %v\n", err)
+					return nil
+				}
+				// p existed when the walk visited it a moment ago but is
+				// gone now -- another process deleted it before AppendFile
+				// got to open it. Skip it with a warning instead of
+				// aborting the whole append, the way tar and zip do.
+				if errors.Is(err, os.ErrNotExist) {
+					fmt.Fprintf(os.Stderr, "Warning: skipping %s: file no longer exists: %v\n", p, err)
 					return nil
 				}
 				return fmt.Errorf("failed to append %s: %w", p, err)
