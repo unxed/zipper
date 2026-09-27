@@ -536,6 +536,14 @@ func runZipper(args []string) error {
 // nothing, outside of tests.
 var testHookFilesCollected func(files map[string]os.FileInfo)
 
+// testHookBeforeAppendFile, when set by a test, is called for the "a"
+// command right before appendTargets hands a walked file's path to the
+// updater's AppendFile. It exists so a test can simulate a file being
+// deleted by another process in the window between the walk seeing it and
+// AppendFile opening it, without needing a real, timing-dependent race. It
+// is nil, and does nothing, outside of tests.
+var testHookBeforeAppendFile func(path string)
+
 // missingFilePath reports whether err is the archiver failing to open one of
 // files because it no longer exists on disk -- most likely deleted by
 // another process after the directory walk saw it but before the archiver
@@ -644,6 +652,9 @@ func appendTargets(u archive.Updater, absChroot string, targets []string, trimPa
 			name := rootName
 			if rel != "." {
 				name = path.Join(rootName, filepath.ToSlash(rel))
+			}
+			if testHookBeforeAppendFile != nil {
+				testHookBeforeAppendFile(p)
 			}
 			if err := u.AppendFile(name, p, info); err != nil {
 				if errors.Is(err, archive.ErrUnsupportedAppend) {
