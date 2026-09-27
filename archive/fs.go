@@ -126,6 +126,16 @@ func newTarFS(filename string, opts Options) (FileSystem, error) {
 	if indexPath == "" {
 		indexPath = getDeterministicIndexPath(filename)
 	}
+	switch opts.IndexBackend {
+	case IndexBackendAuto:
+		// leave it to unxed/tar's own build-tag-bound default
+	case IndexBackendSQLite:
+		fopts = append(fopts, tar.WithFSIndexBackend(tar.IndexBackendSQLite))
+	case IndexBackendArcidx:
+		fopts = append(fopts, tar.WithFSIndexBackend(tar.IndexBackendArcidx))
+	default:
+		return nil, fmt.Errorf("zipper: unknown IndexBackend %q (want \"\", %q or %q)", opts.IndexBackend, IndexBackendSQLite, IndexBackendArcidx)
+	}
 	tfs, err := tar.NewFS(filename, indexPath, fopts...)
 	if err != nil {
 		return nil, err

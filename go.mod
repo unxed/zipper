@@ -7,7 +7,7 @@ require (
 	github.com/unxed/archives v0.1.3
 	github.com/unxed/par2 v0.1.3
 	github.com/unxed/sevenzip v0.1.7
-	github.com/unxed/tar v0.1.136
+	github.com/unxed/tar v0.1.137
 	github.com/unxed/zip v0.1.143
 )
 
@@ -17,6 +17,7 @@ require (
 	github.com/bodgit/plumbing v1.3.0 // indirect
 	github.com/bodgit/windows v1.0.1 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
+	github.com/google/flatbuffers v25.12.19+incompatible // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/klauspost/compress v1.19.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.3 // indirect
