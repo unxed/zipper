@@ -75,6 +75,7 @@ func runZipper(args []string) error {
 		seekChunkSize    int
 		seekContinuous   bool
 		indexPath        string
+		indexBackend     string
 		embeddedIndex    bool
 		torrentZip       bool
 		recoveryPct      int
@@ -113,6 +114,7 @@ func runZipper(args []string) error {
 	fs.BoolVar(&sparse, "sparse", false, "Sparse extraction")
 	fs.BoolVar(&tolerant, "tolerant", false, "Tolerant extraction (ignore some corruptions)")
 	fs.StringVar(&indexPath, "index", "", "Path to SQLite index file")
+	fs.StringVar(&indexBackend, "index-backend", "", "Tar index backend: \"\" (auto), \"sqlite\", or \"arcidx\"")
 	fs.BoolVar(&embeddedIndex, "embedded-index", true, "Embed index in TAR archive (F4SS)")
 	fs.BoolVar(&torrentZip, "torrentzip", false, "Create torrentzip compatible archive (zip)")
 	fs.IntVar(&recoveryPct, "rr", 0, "Add recovery record (percentage, e.g. 5 for 5%)")
@@ -175,6 +177,7 @@ func runZipper(args []string) error {
 		SeekChunkSize:      uint32(seekChunkSize),
 		SeekContinuous:     seekContinuous,
 		IndexPath:          indexPath,
+		IndexBackend:       indexBackend,
 		EmbeddedIdx:        embeddedIndex,
 		TorrentZip:         torrentZip,
 		RecoveryPct:        recoveryPct,

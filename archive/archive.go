@@ -27,6 +27,13 @@ type stdoutWrapper struct{ *os.File }
 
 func (stdoutWrapper) Close() error { return nil }
 
+// Index backend values for Options.IndexBackend.
+const (
+	IndexBackendAuto   = ""       // leave the choice to unxed/tar (build-tag bound)
+	IndexBackendSQLite = "sqlite" // force the sqlite-backed index
+	IndexBackendArcidx = "arcidx" // force the FlatBuffers-backed index
+)
+
 // Options содержит унифицированные параметры как для zip, так и для tar.
 type Options struct {
 	Concurrency int
@@ -46,6 +53,16 @@ type Options struct {
 	IndexPath   string
 	EmbeddedIdx bool
 	NonSolid    bool
+
+	// IndexBackend explicitly picks which tar index implementation OpenFS
+	// uses for a tar archive (see unxed/tar's IndexBackend, added alongside
+	// its own WithFSIndexBackend): "" (the default) leaves the choice to
+	// unxed/tar itself - the sqlite-backed index, unless zipper was built
+	// with -tags tarindex_simple, in which case the FlatBuffers-backed one.
+	// "sqlite" and "arcidx" force one or the other for this open, regardless
+	// of build tag. Ignored for zip/7z/other formats, which have no
+	// equivalent index backend choice.
+	IndexBackend string
 
 	// Extractor specific
 	RecoveryPct int

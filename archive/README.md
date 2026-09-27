@@ -18,6 +18,7 @@ type Options struct {
 	SeekContinuous bool
 	Incremental    bool
 	IndexPath      string
+	IndexBackend   string // "" (auto), "sqlite", or "arcidx" - see unxed/tar's IndexBackend
 	EmbeddedIdx    bool
 
 	// Extractor specific
