@@ -24,6 +24,12 @@ jobs:
             goarch: arm64
     env:
       CGO_ENABLED: 0
+    # id-token: write lets codecov-action mint an OIDC token and upload
+    # coverage.out without a CODECOV_TOKEN secret (see the Codecov step
+    # below). The rest of this job needs no elevated permissions.
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
     - name: Checkout code
@@ -40,8 +46,33 @@ jobs:
     - name: Run Tests
       if: matrix.goos == 'linux' && matrix.goarch == 'amd64'
       run: |
-        go test -v ./...
+        go test -v -coverprofile=coverage.out ./...
         go test -v ./archive/...
+
+    # Uploaded only on the one matrix leg that runs tests above, matching
+    # vtui's setup (unxed/vtui, .github/workflows/ci.yml): codecov-action
+    # authenticates via OIDC from the `id-token: write` permission above,
+    # so no CODECOV_TOKEN secret is needed for this repo's own branches and
+    # same-repo pull requests. It does not work for pull_request runs from
+    # forks (forks are not granted id-token), but fail_ci_if_error keeps
+    # that from failing CI either way.
+    #
+    # If OIDC turns out to be unreliable in practice, switch this to
+    # token: ${{ secrets.CODECOV_TOKEN }} once the owner adds a
+    # CODECOV_TOKEN secret for this repo: Codecov -> zipper -> Settings ->
+    # General -> repository upload token, then GitHub -> unxed/zipper ->
+    # Settings -> Secrets and variables -> Actions -> New repository secret
+    # named CODECOV_TOKEN.
+    - name: Upload coverage to Codecov
+      if: hashFiles('coverage.out') != ''
+      uses: codecov/codecov-action@v7
+      with:
+        files: coverage.out
+        disable_search: true
+        use_oidc: true
+        # Coverage is a report, not a gate: a failed upload must not turn
+        # the test run red.
+        fail_ci_if_error: false
 
     - name: Build binaries
       env:
