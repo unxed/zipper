@@ -32,7 +32,7 @@ require (
 	github.com/stangelandcl/ppmd v0.1.1 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/unxed/localecp v0.1.6 // indirect
-	github.com/unxed/xz v0.1.47 // indirect
+	github.com/unxed/xz v0.1.48 // indirect
 	github.com/unxed/zipcharset v0.1.5 // indirect
 	github.com/unxed/zlib4go v0.1.16 // indirect
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
