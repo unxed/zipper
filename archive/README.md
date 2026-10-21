@@ -68,6 +68,24 @@ type Updater interface {
 }
 ```
 
+### 5. List
+Lists every entry of an archive with what its format tells about it, for an archiver window or a detailed listing.
+```go
+type Entry struct {
+	Name      string    // path inside the archive, no trailing slash
+	Size      int64     // unpacked size; 0 for a directory
+	Packed    int64     // size in the archive; -1 where the format does not tell it
+	Modified  time.Time
+	CRC32     uint32    // 0 where the format keeps none
+	Method    string    // "store", "deflate", "zstd", ...; "" where unknown
+	Encrypted bool
+	IsDir     bool
+}
+
+func List(ctx context.Context, filename string, opts Options) ([]Entry, error)
+```
+zip fills every field from the entry headers. tar is one stream, so its entries have `Packed` -1, `CRC32` 0 and `Method` set to the compression of the whole archive. 7z, rar and the other formats read through `archives` give the name, size, time and directory flag.
+
 ---
 
 ## Code Examples
