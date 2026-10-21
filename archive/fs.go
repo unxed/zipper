@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/unxed/archives"
 	"github.com/unxed/tar"
@@ -254,14 +255,24 @@ func (f *fallbackFS) Close() error {
 	return err2
 }
 
+// indexFingerprintEdge is how many bytes from each end of the archive go into
+// the fingerprint of its cached index.
+const indexFingerprintEdge = 64 << 10
+
+// getDeterministicIndexPath returns where OpenFS keeps the index of a tar
+// archive when Options.IndexPath is empty. The name carries the archive's path
+// and a fingerprint of its content, so an archive that was appended to or
+// rewritten in place finds no index and gets a new one instead of being listed
+// from the old. Indexes the same path left under another fingerprint are
+// removed. Without a fingerprint (the archive cannot be read) the name has the
+// path alone.
 func getDeterministicIndexPath(filename string) string {
 	abs, err := filepath.Abs(filename)
 	if err != nil {
 		abs = filename
 	}
 	hash := sha256.Sum256([]byte(abs))
-	hashStr := hex.EncodeToString(hash[:16])
-	base := filepath.Base(filename)
+	prefix := filepath.Base(filename) + "-" + hex.EncodeToString(hash[:16])
 
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {
@@ -270,5 +281,59 @@ func getDeterministicIndexPath(filename string) string {
 	dir := filepath.Join(cacheDir, "f4", "tar-indexes")
 	_ = os.MkdirAll(dir, 0755)
 
-	return filepath.Join(dir, fmt.Sprintf("%s-%s.index.sqlite", base, hashStr))
+	fingerprint, err := archiveFingerprint(filename)
+	if err != nil {
+		return filepath.Join(dir, prefix+".index.sqlite")
+	}
+	current := prefix + "-" + fingerprint + ".index.sqlite"
+	removeStaleIndexes(dir, prefix, current)
+	return filepath.Join(dir, current)
+}
+
+// archiveFingerprint hashes the archive's size and its first and last
+// indexFingerprintEdge bytes: cheap next to building the index, which reads
+// the whole archive, and changed by any append or rewrite.
+func archiveFingerprint(filename string) (string, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return "", err
+	}
+	size := info.Size()
+	h := sha256.New()
+	fmt.Fprintf(h, "%d\x00", size)
+	if _, err := io.Copy(h, io.NewSectionReader(f, 0, min(size, indexFingerprintEdge))); err != nil {
+		return "", err
+	}
+	tail := max(size-indexFingerprintEdge, 0)
+	if _, err := io.Copy(h, io.NewSectionReader(f, tail, size-tail)); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)[:8]), nil
+}
+
+// removeStaleIndexes deletes the index files of prefix other than current,
+// with the side files SQLite keeps beside them: the plain
+// "<prefix>.index.sqlite" and any "<prefix>-<fingerprint>.index.sqlite".
+// A file another process holds open may not go away; it is only clutter.
+func removeStaleIndexes(dir, prefix, current string) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		name := e.Name()
+		if !strings.HasPrefix(name, prefix) || strings.HasPrefix(name, current) {
+			continue
+		}
+		rest := name[len(prefix):]
+		if !strings.HasPrefix(rest, ".index.sqlite") && !(strings.HasPrefix(rest, "-") && strings.Contains(rest, ".index.sqlite")) {
+			continue
+		}
+		_ = os.Remove(filepath.Join(dir, name))
+	}
 }
