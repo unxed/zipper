@@ -28,6 +28,15 @@ type CurrentFiler interface {
 	CurrentFile() string
 }
 
+// ConflictAction determines what extraction does when a target already exists.
+type ConflictAction int
+
+const (
+	ConflictReplace ConflictAction = iota
+	ConflictSkip
+	ConflictCancel
+)
+
 // Extractor описывает абстрактный интерфейс для распаковки архивов.
 type Extractor interface {
 	Extract(ctx context.Context) error
@@ -79,6 +88,9 @@ type Options struct {
 	// Include limits extraction to these paths inside the archive. Selecting a
 	// directory includes its entire subtree. An empty slice extracts everything.
 	Include []string
+	// OnConflict is called with the archive path when extraction would replace
+	// an existing target. It is ignored when nil.
+	OnConflict func(name string) ConflictAction
 
 	RecoveryPct int
 

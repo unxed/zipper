@@ -50,8 +50,21 @@ type Extractor interface {
 type CurrentFiler interface {
 	CurrentFile() string
 }
+
+type ConflictAction int
+const (
+	ConflictReplace ConflictAction = iota
+	ConflictSkip
+	ConflictCancel
+)
+
+type Options struct {
+	// ...
+	OnConflict func(name string) ConflictAction
+}
 ```
 Extractors implement `CurrentFiler`; it reports the path currently being extracted, or an empty string when no current path is available.
+When `Options.OnConflict` is set, it is called for each archive path whose destination already exists. Return `ConflictReplace` to replace it, `ConflictSkip` to leave it unchanged, or `ConflictCancel` to stop extraction with `context.Canceled`. With a callback set, extraction uses the fallback extractor for all supported formats.
 
 ### 3. FileSystem
 Provides read-only VFS access (`fs.FS`) to zip, tar, and fallback formats.

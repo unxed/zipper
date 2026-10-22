@@ -143,7 +143,9 @@ func NewExtractor(filename, chroot string, opts Options) (Extractor, error) {
 	}
 
 	var e Extractor
-	if fmtType == "zip" {
+	if opts.OnConflict != nil {
+		e, err = NewFallbackExtractor(filename, chroot, opts)
+	} else if fmtType == "zip" {
 		e, err = NewZipExtractor(filename, chroot, opts)
 	} else if fmtType == "tar" {
 		e, err = NewTarExtractor(filename, chroot, opts)
