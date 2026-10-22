@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -24,6 +25,7 @@ type fallbackExtractor struct {
 	filename string
 	chroot   string
 	password string
+	include  []string
 
 	writtenBytes   int64
 	writtenEntries int64
@@ -52,11 +54,15 @@ func (pr *progressReader) Read(p []byte) (int, error) {
 }
 
 func NewFallbackExtractor(filename, chroot string, opts Options) (Extractor, error) {
+	include, err := normalizeInclude(opts.Include)
+	if err != nil {
+		return nil, err
+	}
 	absChroot, err := filepath.Abs(chroot)
 	if err != nil {
 		return nil, err
 	}
-	return &fallbackExtractor{filename: filename, chroot: absChroot, password: opts.Password}, nil
+	return &fallbackExtractor{filename: filename, chroot: absChroot, password: opts.Password, include: include}, nil
 }
 
 func (e *fallbackExtractor) Extract(ctx context.Context) error {
@@ -90,14 +96,20 @@ func (e *fallbackExtractor) Extract(ctx context.Context) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
+		if !includedPath(info.NameInArchive, e.include) {
+			return nil
+		}
 
 		atomic.AddInt64(&e.writtenEntries, 1)
 
-		cleanName := filepath.ToSlash(filepath.Clean(info.NameInArchive))
-		if strings.HasPrefix(cleanName, "../") || strings.HasPrefix(cleanName, "/") {
+		cleanName := path.Clean(strings.ReplaceAll(info.NameInArchive, "\\", "/"))
+		if cleanName == ".." || strings.HasPrefix(cleanName, "../") || path.IsAbs(cleanName) {
 			return fmt.Errorf("path traversal attack detected: %s", info.NameInArchive)
 		}
-		targetPath := filepath.Join(cleanChroot, cleanName)
+		if cleanName == "." {
+			return nil
+		}
+		targetPath := filepath.Join(cleanChroot, filepath.FromSlash(cleanName))
 
 		e.mu.Lock()
 		e.currentFile = cleanName

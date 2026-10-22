@@ -22,6 +22,7 @@ type Options struct {
 	EmbeddedIdx    bool
 
 	// Extractor specific
+	Include        []string
 	KeepOldFiles   bool
 	KeepNewerFiles bool
 	KeepBroken     bool
@@ -112,6 +113,13 @@ func main() {
 		log.Fatal(err)
 	}
 }
+```
+
+To extract only selected archive paths, pass them in `Options.Include`. Paths use `/` regardless of the host OS; selecting a directory includes that directory and its entire subtree. An empty `Include` extracts the whole archive.
+
+```go
+opts := archive.Options{Include: []string{"docs/readme.txt", "images"}}
+e, err := archive.NewExtractor("backup.zip", "./output_dir", opts)
 ```
 
 ### 2. Reading files via fs.FS (Virtual File System)

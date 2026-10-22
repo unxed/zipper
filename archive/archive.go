@@ -2,7 +2,11 @@ package archive
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"path"
+	"path/filepath"
+	"strings"
 )
 
 // Progresser описывает интерфейс для получения статистики процесса
@@ -65,6 +69,10 @@ type Options struct {
 	IndexBackend string
 
 	// Extractor specific
+	// Include limits extraction to these paths inside the archive. Selecting a
+	// directory includes its entire subtree. An empty slice extracts everything.
+	Include []string
+
 	RecoveryPct int
 
 	KeepOldFiles   bool
@@ -85,4 +93,49 @@ type Options struct {
 	RecoveryExternal   bool
 	Lock               bool
 	PathMapping        map[string]string
+}
+
+func normalizeInclude(paths []string) ([]string, error) {
+	if len(paths) == 0 {
+		return nil, nil
+	}
+
+	seen := make(map[string]struct{}, len(paths))
+	cleaned := make([]string, 0, len(paths))
+	for _, name := range paths {
+		if name == "" || strings.Contains(name, "\\") {
+			return nil, fmt.Errorf("archive: invalid include path %q: use a non-empty slash-separated archive path", name)
+		}
+		clean := path.Clean(name)
+		if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") || path.IsAbs(clean) ||
+			filepath.IsAbs(filepath.FromSlash(clean)) || filepath.VolumeName(filepath.FromSlash(clean)) != "" || hasDrivePrefix(clean) {
+			return nil, fmt.Errorf("archive: invalid include path %q: path must stay inside the archive", name)
+		}
+		if _, ok := seen[clean]; !ok {
+			seen[clean] = struct{}{}
+			cleaned = append(cleaned, clean)
+		}
+	}
+	return cleaned, nil
+}
+
+func includedPath(name string, includes []string) bool {
+	if len(includes) == 0 {
+		return true
+	}
+	clean := path.Clean(strings.ReplaceAll(name, "\\", "/"))
+	if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") || path.IsAbs(clean) ||
+		filepath.IsAbs(filepath.FromSlash(clean)) || filepath.VolumeName(filepath.FromSlash(clean)) != "" || hasDrivePrefix(clean) {
+		return false
+	}
+	for _, include := range includes {
+		if clean == include || strings.HasPrefix(clean, include+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+func hasDrivePrefix(name string) bool {
+	return len(name) >= 2 && ((name[0] >= 'a' && name[0] <= 'z') || (name[0] >= 'A' && name[0] <= 'Z')) && name[1] == ':'
 }
