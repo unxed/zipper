@@ -22,10 +22,11 @@ var fallbackCopyBufPool = sync.Pool{
 }
 
 type fallbackExtractor struct {
-	filename string
-	chroot   string
-	password string
-	include  []string
+	filename   string
+	chroot     string
+	password   string
+	include    []string
+	onConflict func(string) ConflictAction
 
 	writtenBytes   int64
 	writtenEntries int64
@@ -62,7 +63,7 @@ func NewFallbackExtractor(filename, chroot string, opts Options) (Extractor, err
 	if err != nil {
 		return nil, err
 	}
-	return &fallbackExtractor{filename: filename, chroot: absChroot, password: opts.Password, include: include}, nil
+	return &fallbackExtractor{filename: filename, chroot: absChroot, password: opts.Password, include: include, onConflict: opts.OnConflict}, nil
 }
 
 func (e *fallbackExtractor) Extract(ctx context.Context) error {
@@ -110,6 +111,21 @@ func (e *fallbackExtractor) Extract(ctx context.Context) error {
 			return nil
 		}
 		targetPath := filepath.Join(cleanChroot, filepath.FromSlash(cleanName))
+		if e.onConflict != nil {
+			if _, err := os.Lstat(targetPath); err == nil {
+				switch e.onConflict(cleanName) {
+				case ConflictReplace:
+				case ConflictSkip:
+					return nil
+				case ConflictCancel:
+					return context.Canceled
+				default:
+					return fmt.Errorf("archive: invalid conflict action for %q", cleanName)
+				}
+			} else if !os.IsNotExist(err) {
+				return err
+			}
+		}
 
 		e.mu.Lock()
 		e.currentFile = cleanName
