@@ -46,7 +46,12 @@ type Extractor interface {
 	Extract(ctx context.Context) error
 	Close() error
 }
+
+type CurrentFiler interface {
+	CurrentFile() string
+}
 ```
+Extractors implement `CurrentFiler`; it reports the path currently being extracted, or an empty string when no current path is available.
 
 ### 3. FileSystem
 Provides read-only VFS access (`fs.FS`) to zip, tar, and fallback formats.
