@@ -21,6 +21,13 @@ type Archiver interface {
 	Progresser
 }
 
+// CurrentFiler reports the archive path currently being extracted.
+// It returns an empty string when the extractor has no current file or the
+// underlying format engine does not report one.
+type CurrentFiler interface {
+	CurrentFile() string
+}
+
 // Extractor описывает абстрактный интерфейс для распаковки архивов.
 type Extractor interface {
 	Extract(ctx context.Context) error
