@@ -119,6 +119,12 @@ func (s *spoolExtractor) Close() error {
 
 // NewExtractor возвращает соответствующий Extractor на основе имени файла.
 func NewExtractor(filename, chroot string, opts Options) (Extractor, error) {
+	include, err := normalizeInclude(opts.Include)
+	if err != nil {
+		return nil, err
+	}
+	opts.Include = include
+
 	var tempFile string
 	originalFilename := filename
 
@@ -137,7 +143,6 @@ func NewExtractor(filename, chroot string, opts Options) (Extractor, error) {
 	}
 
 	var e Extractor
-	var err error
 	if fmtType == "zip" {
 		e, err = NewZipExtractor(filename, chroot, opts)
 	} else if fmtType == "tar" {

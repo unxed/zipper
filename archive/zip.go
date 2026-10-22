@@ -149,6 +149,9 @@ type zipExtractor struct {
 }
 
 func NewZipExtractor(filename, chroot string, opts Options) (Extractor, error) {
+	if len(opts.Include) > 0 {
+		return NewFallbackExtractor(filename, chroot, opts)
+	}
 	var zopts []zip.ExtractorOption
 	if opts.Concurrency > 0 {
 		zopts = append(zopts, zip.WithExtractorConcurrency(opts.Concurrency))

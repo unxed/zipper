@@ -87,6 +87,9 @@ type tarExtractor struct {
 }
 
 func NewTarExtractor(filename, chroot string, opts Options) (Extractor, error) {
+	if len(opts.Include) > 0 {
+		return NewFallbackExtractor(filename, chroot, opts)
+	}
 	var topts []tar.ExtractorOption
 	if opts.Concurrency > 0 {
 		topts = append(topts, tar.WithExtractorConcurrency(opts.Concurrency))
