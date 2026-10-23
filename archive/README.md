@@ -105,6 +105,23 @@ func List(ctx context.Context, filename string, opts Options) ([]Entry, error)
 ```
 zip fills every field from the entry headers. tar is one stream, so its entries have `Packed` -1, `CRC32` 0 and `Method` set to the compression of the whole archive. 7z, rar and the other formats read through `archives` give the name, size, time and directory flag.
 
+### 6. Test
+
+Read every file in an archive to EOF without extracting it. ZIP data is read through its CRC-checking reader; tar and fallback formats are streamed through `archives`. Per-member failures are returned with the member name; archive-open and format-identification failures are returned as `error`.
+
+```go
+type TestError struct {
+	Name string
+	Err  error
+}
+
+type TestProgressFunc func(bytes, entries int64)
+
+func Test(ctx context.Context, filename string, opts Options, progress TestProgressFunc) ([]TestError, error)
+```
+
+The optional progress callback receives cumulative uncompressed bytes read and files tested.
+
 ---
 
 ## Code Examples

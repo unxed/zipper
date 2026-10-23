@@ -14,6 +14,9 @@ type Progresser interface {
 	Written() (bytes, entries int64)
 }
 
+// TestProgressFunc receives cumulative bytes read and files tested.
+type TestProgressFunc func(bytes, entries int64)
+
 // Archiver описывает абстрактный интерфейс для создания архивов.
 type Archiver interface {
 	Archive(ctx context.Context, files map[string]os.FileInfo) error
