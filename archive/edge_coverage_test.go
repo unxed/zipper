@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -336,6 +337,463 @@ func TestTarUpdater_Remove_UnsupportedWrapper(t *testing.T) {
 				t.Fatal("original archive bytes were modified on unsupported wrapper removal")
 			}
 		})
+	}
+}
+func TestTarUpdater_Remove_TrailingSlashAndNested(t *testing.T) {
+	tmp := t.TempDir()
+	src := filepath.Join(tmp, "src")
+	if err := os.MkdirAll(filepath.Join(src, "dir", "nested"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(src, "root.txt"), []byte("root data"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(src, "dir", "sub1.txt"), []byte("sub1 data"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(src, "dir", "sub2.txt"), []byte("sub2 data"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(src, "dir", "nested", "deep.txt"), []byte("deep data"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	files := map[string]os.FileInfo{}
+	for _, p := range []string{
+		"root.txt",
+		"dir",
+		filepath.Join("dir", "sub1.txt"),
+		filepath.Join("dir", "sub2.txt"),
+		filepath.Join("dir", "nested"),
+		filepath.Join("dir", "nested", "deep.txt"),
+	} {
+		full := filepath.Join(src, p)
+		info, err := os.Stat(full)
+		if err != nil {
+			t.Fatal(err)
+		}
+		files[full] = info
+	}
+
+	arc := filepath.Join(tmp, "test.tar")
+	a, err := NewArchiver(arc, src, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Archive(context.Background(), files); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	u, err := NewUpdater(arc, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer u.Close()
+
+	if err := u.Remove("dir/sub1.txt"); err != nil {
+		t.Fatalf("failed to remove dir/sub1.txt: %v", err)
+	}
+
+	list, err := List(context.Background(), arc, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := make(map[string]bool)
+	for _, e := range list {
+		names[e.Name] = true
+	}
+	if names["dir/sub1.txt"] {
+		t.Fatal("expected dir/sub1.txt to be removed")
+	}
+	for _, expected := range []string{"root.txt", "dir", "dir/sub2.txt", "dir/nested", "dir/nested/deep.txt"} {
+		if !names[expected] {
+			t.Fatalf("expected %s to still exist in archive", expected)
+		}
+	}
+
+	if err := u.Remove("dir/nested/"); err != nil {
+		t.Fatalf("failed to remove dir/nested/: %v", err)
+	}
+
+	list, err = List(context.Background(), arc, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	names = make(map[string]bool)
+	for _, e := range list {
+		names[e.Name] = true
+	}
+	if names["dir/nested"] || names["dir/nested/deep.txt"] {
+		t.Fatal("expected dir/nested and deep.txt to be removed")
+	}
+	for _, expected := range []string{"root.txt", "dir", "dir/sub2.txt"} {
+		if !names[expected] {
+			t.Fatalf("expected %s to still exist in archive", expected)
+		}
+	}
+}
+
+func TestTarUpdater_Remove_TwiceAndAppend(t *testing.T) {
+	tmp := t.TempDir()
+	src := filepath.Join(tmp, "src")
+	if err := os.MkdirAll(src, 0755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"file1.txt", "file2.txt", "file3.txt"} {
+		if err := os.WriteFile(filepath.Join(src, name), []byte("content "+name), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	files := map[string]os.FileInfo{}
+	for _, name := range []string{"file1.txt", "file2.txt", "file3.txt"} {
+		full := filepath.Join(src, name)
+		info, err := os.Stat(full)
+		if err != nil {
+			t.Fatal(err)
+		}
+		files[full] = info
+	}
+
+	arc := filepath.Join(tmp, "test.tar")
+	a, err := NewArchiver(arc, src, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Archive(context.Background(), files); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	u, err := NewUpdater(arc, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := u.Remove("file1.txt"); err != nil {
+		t.Fatalf("first remove failed: %v", err)
+	}
+	if err := u.Remove("file2.txt"); err != nil {
+		t.Fatalf("second remove failed: %v", err)
+	}
+
+	if err := u.Append("file4.txt", int64(len("content file4")), strings.NewReader("content file4")); err != nil {
+		t.Fatalf("append after repack failed: %v", err)
+	}
+	if err := u.Close(); err != nil {
+		t.Fatalf("close after append failed: %v", err)
+	}
+
+	list, err := List(context.Background(), arc, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 2 {
+		t.Fatalf("expected 2 entries, got %d: %+v", len(list), list)
+	}
+	names := map[string]bool{list[0].Name: true, list[1].Name: true}
+	if !names["file3.txt"] || !names["file4.txt"] {
+		t.Fatalf("unexpected entries in archive: %+v", list)
+	}
+
+	fsys, err := OpenFS(arc, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fsys.Close()
+
+	for name, want := range map[string]string{
+		"file3.txt": "content file3.txt",
+		"file4.txt": "content file4",
+	} {
+		f, err := fsys.Open(name)
+		if err != nil {
+			t.Fatalf("Open(%s): %v", name, err)
+		}
+		data, err := io.ReadAll(f)
+		f.Close()
+		if err != nil {
+			t.Fatalf("ReadAll(%s): %v", name, err)
+		}
+		if string(data) != want {
+			t.Fatalf("%s content = %q, want %q", name, string(data), want)
+		}
+	}
+}
+
+func TestTarUpdater_Remove_AllEntries(t *testing.T) {
+	tmp := t.TempDir()
+	src := filepath.Join(tmp, "src")
+	if err := os.MkdirAll(src, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(src, "only.txt"), []byte("only data"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	info, err := os.Stat(filepath.Join(src, "only.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	arc := filepath.Join(tmp, "test.tar")
+	a, err := NewArchiver(arc, src, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Archive(context.Background(), map[string]os.FileInfo{filepath.Join(src, "only.txt"): info}); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	u, err := NewUpdater(arc, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := u.Remove("only.txt"); err != nil {
+		t.Fatalf("failed to remove only entry: %v", err)
+	}
+
+	list, err := List(context.Background(), arc, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 0 {
+		t.Fatalf("expected 0 entries after removing all, got: %+v", list)
+	}
+
+	if err := u.Append("reborn.txt", int64(len("reborn")), strings.NewReader("reborn")); err != nil {
+		t.Fatalf("append to emptied archive failed: %v", err)
+	}
+	if err := u.Close(); err != nil {
+		t.Fatalf("close failed: %v", err)
+	}
+
+	list, err = List(context.Background(), arc, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 || list[0].Name != "reborn.txt" {
+		t.Fatalf("expected only reborn.txt, got %+v", list)
+	}
+}
+
+func TestTarUpdater_Remove_OpenFSFailure(t *testing.T) {
+	tmp := t.TempDir()
+	src := filepath.Join(tmp, "src")
+	if err := os.MkdirAll(src, 0755); err != nil {
+		t.Fatal(err)
+	}
+	filePath := filepath.Join(src, "file.txt")
+	if err := os.WriteFile(filePath, []byte("preserve me"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(filePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	arc := filepath.Join(tmp, "test.tar")
+	a, err := NewArchiver(arc, src, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Archive(context.Background(), map[string]os.FileInfo{filePath: info}); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	origBytes, err := os.ReadFile(arc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	u, err := NewUpdater(arc, Options{IndexBackend: "invalid_backend"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer u.Close()
+
+	err = u.Remove("file.txt")
+	if err == nil {
+		t.Fatal("expected error from Remove when OpenFS fails, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to open original archive for reading") {
+		t.Fatalf("expected error mentioning 'failed to open original archive for reading', got: %v", err)
+	}
+
+	currentBytes, err := os.ReadFile(arc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(origBytes, currentBytes) {
+		t.Fatal("original archive was modified on OpenFS failure")
+	}
+}
+
+func TestTarUpdater_Remove_TempArchiveCreateFail(t *testing.T) {
+	tmp := t.TempDir()
+	src := filepath.Join(tmp, "src")
+	if err := os.MkdirAll(src, 0755); err != nil {
+		t.Fatal(err)
+	}
+	filePath := filepath.Join(src, "file.txt")
+	if err := os.WriteFile(filePath, []byte("data"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(filePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	arc := filepath.Join(tmp, "test.tar")
+	a, err := NewArchiver(arc, src, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Archive(context.Background(), map[string]os.FileInfo{filePath: info}); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Close(); err != nil {
+		t.Fatal(err)
+	}
+	origBytes, err := os.ReadFile(arc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	u, err := NewUpdater(arc, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer u.Close()
+
+	tempDir := arc + ".tmp"
+	if err := os.Mkdir(tempDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tempDir)
+
+	err = u.Remove("file.txt")
+	if err == nil {
+		t.Fatal("expected error when temp archive path is a directory, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to create temporary archive") {
+		t.Fatalf("expected error mentioning 'failed to create temporary archive', got: %v", err)
+	}
+
+	currentBytes, err := os.ReadFile(arc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(origBytes, currentBytes) {
+		t.Fatal("original archive was modified on temp archive creation failure")
+	}
+}
+
+func TestTarUpdater_Remove_UnsupportedMethodOption(t *testing.T) {
+	tmp := t.TempDir()
+	arc := filepath.Join(tmp, "test.tar")
+	if err := os.WriteFile(arc, make([]byte, 1024), 0644); err != nil {
+		t.Fatal(err)
+	}
+	origBytes, err := os.ReadFile(arc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	u, err := NewUpdater(arc, Options{Method: "bzip2"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer u.Close()
+
+	err = u.Remove("file.txt")
+	if err == nil {
+		t.Fatal("expected error for unsupported method option, got nil")
+	}
+	if !strings.Contains(err.Error(), "removal is not supported for bzip2") {
+		t.Fatalf("expected error mentioning removal is not supported for bzip2, got: %v", err)
+	}
+
+	currentBytes, err := os.ReadFile(arc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(origBytes, currentBytes) {
+		t.Fatal("original archive was modified on unsupported method removal")
+	}
+}
+
+func TestTarUpdater_Remove_RenameFailure(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("skipping Windows-specific file locking rename test")
+	}
+
+	tmp := t.TempDir()
+	src := filepath.Join(tmp, "src")
+	if err := os.MkdirAll(src, 0755); err != nil {
+		t.Fatal(err)
+	}
+	filePath := filepath.Join(src, "file.txt")
+	if err := os.WriteFile(filePath, []byte("data"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(filePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	arc := filepath.Join(tmp, "test.tar")
+	a, err := NewArchiver(arc, src, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Archive(context.Background(), map[string]os.FileInfo{filePath: info}); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Close(); err != nil {
+		t.Fatal(err)
+	}
+	origBytes, err := os.ReadFile(arc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	u, err := NewUpdater(arc, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer u.Close()
+
+	holder, err := os.Open(arc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer holder.Close()
+
+	err = u.Remove("file.txt")
+	if err == nil {
+		t.Fatal("expected rename failure on locked file, got nil")
+	}
+
+	holder.Close()
+
+	currentBytes, err := os.ReadFile(arc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(origBytes, currentBytes) {
+		t.Fatal("original archive was modified on rename failure")
 	}
 }
 func TestFallbackFS_Invalid(t *testing.T) {
