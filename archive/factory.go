@@ -87,13 +87,14 @@ func NewArchiver(filename, chroot string, opts Options) (Archiver, error) {
 		return NewZipArchiver(filename, chroot, opts)
 	} else if fmtType == "tar" {
 		if opts.Method == "" {
-			if strings.HasSuffix(filename, ".zst") {
+			lower := strings.ToLower(filename)
+			if strings.HasSuffix(lower, ".zst") || strings.HasSuffix(lower, ".tzst") {
 				opts.Method = "zstd"
-			} else if strings.HasSuffix(filename, ".gz") || strings.HasSuffix(filename, ".tgz") {
+			} else if strings.HasSuffix(lower, ".gz") || strings.HasSuffix(lower, ".tgz") {
 				opts.Method = "gzip"
-			} else if strings.HasSuffix(filename, ".xz") || strings.HasSuffix(filename, ".txz") {
+			} else if strings.HasSuffix(lower, ".xz") || strings.HasSuffix(lower, ".txz") {
 				opts.Method = "xz"
-			} else if strings.HasSuffix(filename, ".bz2") {
+			} else if strings.HasSuffix(lower, ".bz2") || strings.HasSuffix(lower, ".tbz2") {
 				opts.Method = "bzip2"
 			} else {
 				opts.Method = "store"
