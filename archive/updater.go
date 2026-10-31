@@ -2,10 +2,13 @@ package archive
 
 import (
 	stdtar "archive/tar"
+	"context"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/unxed/tar"
@@ -154,8 +157,10 @@ func (z *zipUpdater) Close() error {
 }
 
 type tarUpdater struct {
-	f *os.File
-	u *tar.Updater
+	f        *os.File
+	u        *tar.Updater
+	filename string
+	opts     Options
 }
 
 func newTarUpdater(filename string, opts Options) (Updater, error) {
@@ -174,7 +179,7 @@ func newTarUpdater(filename string, opts Options) (Updater, error) {
 		f.Close()
 		return nil, err
 	}
-	return &tarUpdater{f: f, u: u}, nil
+	return &tarUpdater{f: f, u: u, filename: filename, opts: opts}, nil
 }
 
 func (t *tarUpdater) Append(name string, size int64, r io.Reader) error {
@@ -218,8 +223,198 @@ func (t *tarUpdater) AppendFile(name, path string, fi os.FileInfo) error {
 	return t.u.AppendHeader(hdr, f)
 }
 
+// Remove removes an entry or directory subtree from the tar archive.
+// Because tar does not natively support in-place removal, this performs a full
+// repack of the archive to a temporary file, with cost proportional to the archive size.
+// An entry is removed if its path matches name exactly or starts with the directory prefix name/.
+// Removal is only supported for TAR wrappers whose compression can be recreated
+// (.tar, .tar.zst, .tzst, .tar.gz, .tgz, .tar.xz, .txz). For other wrappers
+// (such as .tar.bz2, .tbz2, .tar.lzma), Remove returns an error before touching the
+// original archive to avoid altering its compression format.
 func (t *tarUpdater) Remove(name string) error {
-	return fmt.Errorf("archive: in-place removal is not supported natively for tar")
+	tempOpts := t.opts
+	tempOpts.RecoveryPct = 0
+	if tempOpts.Method == "" {
+		lower := strings.ToLower(t.filename)
+		if strings.HasSuffix(lower, ".zst") || strings.HasSuffix(lower, ".tzst") {
+			tempOpts.Method = "zstd"
+		} else if strings.HasSuffix(lower, ".gz") || strings.HasSuffix(lower, ".tgz") {
+			tempOpts.Method = "gzip"
+		} else if strings.HasSuffix(lower, ".xz") || strings.HasSuffix(lower, ".txz") {
+			tempOpts.Method = "xz"
+		} else if strings.HasSuffix(lower, ".tar") {
+			tempOpts.Method = "store"
+		} else {
+			ext := filepath.Ext(t.filename)
+			if ext == "" {
+				ext = filepath.Base(t.filename)
+			}
+			return fmt.Errorf("archive: removal is not supported for %s", ext)
+		}
+	} else {
+		switch tempOpts.Method {
+		case "zstd", "gzip", "xz", "store":
+		default:
+			return fmt.Errorf("archive: removal is not supported for %s", tempOpts.Method)
+		}
+	}
+
+	// In-place removal is not supported natively for tar.
+	// We repack the archive to a temporary file, skipping the entry and its subtree,
+	// then replace the original.
+	if err := t.u.Close(); err != nil {
+		t.f.Close()
+		return err
+	}
+	if err := t.f.Close(); err != nil {
+		return err
+	}
+
+	reopen := func() error {
+		f, err := os.OpenFile(t.filename, os.O_RDWR, 0644)
+		if err != nil {
+			return err
+		}
+		var topts []tar.WriterOption
+		if t.opts.Level != 0 {
+			topts = append(topts, tar.WithWriterLevel(t.opts.Level))
+		}
+		u, err := tar.NewUpdater(f, tar.APPEND_MODE_OVERWRITE, topts...)
+		if err != nil {
+			f.Close()
+			return err
+		}
+		t.f = f
+		t.u = u
+		return nil
+	}
+
+	tempName := t.filename + ".tmp"
+	defer os.Remove(tempName)
+
+	emptyArchiver, err := NewTarArchiver(tempName, "", tempOpts)
+	if err != nil {
+		reopen()
+		return fmt.Errorf("archive: failed to create temporary archive: %w", err)
+	}
+	if err := emptyArchiver.Archive(context.Background(), nil); err != nil {
+		emptyArchiver.Close()
+		reopen()
+		return fmt.Errorf("archive: failed to initialize temporary archive: %w", err)
+	}
+	if err := emptyArchiver.Close(); err != nil {
+		reopen()
+		return fmt.Errorf("archive: failed to close temporary archive: %w", err)
+	}
+
+	fsys, err := OpenFS(t.filename, t.opts)
+	if err != nil {
+		reopen()
+		return fmt.Errorf("archive: failed to open original archive for reading: %w", err)
+	}
+
+	tf, err := os.OpenFile(tempName, os.O_RDWR, 0644)
+	if err != nil {
+		fsys.Close()
+		reopen()
+		return fmt.Errorf("archive: failed to open temporary archive for appending: %w", err)
+	}
+
+	var topts []tar.WriterOption
+	if t.opts.Level != 0 {
+		topts = append(topts, tar.WithWriterLevel(t.opts.Level))
+	}
+	newU, err := tar.NewUpdater(tf, tar.APPEND_MODE_OVERWRITE, topts...)
+	if err != nil {
+		tf.Close()
+		fsys.Close()
+		reopen()
+		return fmt.Errorf("archive: failed to initialize temporary updater: %w", err)
+	}
+
+	matchName := name
+	if strings.HasSuffix(matchName, "/") {
+		matchName = matchName[:len(matchName)-1]
+	}
+	removedAny := false
+
+	copyErr := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if path == "." {
+			return nil
+		}
+		if path == matchName || strings.HasPrefix(path, matchName+"/") {
+			removedAny = true
+			return nil
+		}
+
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		var hdr *stdtar.Header
+		if sys := info.Sys(); sys != nil {
+			if h, ok := sys.(*stdtar.Header); ok {
+				hdr = h
+			}
+		}
+		if hdr == nil {
+			hdr, err = stdtar.FileInfoHeader(info, "")
+			if err != nil {
+				return err
+			}
+			hdr.Name = path
+			if d.IsDir() && !strings.HasSuffix(hdr.Name, "/") {
+				hdr.Name += "/"
+			}
+		}
+
+		var r io.Reader
+		if !d.IsDir() && info.Mode().IsRegular() {
+			f, err := fsys.Open(path)
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+			r = f
+		}
+		return newU.AppendHeader(hdr, r)
+	})
+
+	fsys.Close()
+
+	if copyErr != nil {
+		newU.Close()
+		tf.Close()
+		reopen()
+		return copyErr
+	}
+	if !removedAny {
+		newU.Close()
+		tf.Close()
+		reopen()
+		return os.ErrNotExist
+	}
+
+	if err := newU.Close(); err != nil {
+		tf.Close()
+		reopen()
+		return err
+	}
+	if err := tf.Close(); err != nil {
+		reopen()
+		return err
+	}
+
+	if err := os.Rename(tempName, t.filename); err != nil {
+		reopen()
+		return err
+	}
+
+	return reopen()
 }
 
 func (t *tarUpdater) Close() error {

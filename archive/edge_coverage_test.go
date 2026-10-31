@@ -1,6 +1,11 @@
 package archive
 
 import (
+	"bytes"
+	"context"
+	"errors"
+	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -95,18 +100,243 @@ func TestRepair_Edge(t *testing.T) {
 }
 
 func TestTarUpdater_Remove(t *testing.T) {
-	tmp := t.TempDir()
-	arc := filepath.Join(tmp, "test.tar")
-	os.WriteFile(arc, make([]byte, 1024), 0644) // dummy file
+	for _, name := range []string{
+		"test.tar",
+		"test.tar.zst",
+		"test.tzst",
+		"test.tar.gz",
+		"test.tgz",
+		"test.tar.xz",
+		"test.txz",
+	} {
+		t.Run(name, func(t *testing.T) {
+			tmp := t.TempDir()
+			src := filepath.Join(tmp, "src")
+			os.MkdirAll(src, 0755)
 
-	u, err := newTarUpdater(arc, Options{})
+			os.MkdirAll(filepath.Join(src, "dir"), 0755)
+			os.WriteFile(filepath.Join(src, "file1.txt"), []byte("data1"), 0644)
+			os.WriteFile(filepath.Join(src, "dir", "file2.txt"), []byte("data2"), 0644)
+
+			files := map[string]os.FileInfo{}
+			for _, p := range []string{"file1.txt", "dir", filepath.Join("dir", "file2.txt")} {
+				full := filepath.Join(src, p)
+				info, err := os.Stat(full)
+				if err != nil {
+					t.Fatal(err)
+				}
+				files[full] = info
+			}
+
+			arc := filepath.Join(tmp, name)
+			a, err := NewArchiver(arc, src, Options{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := a.Archive(context.Background(), files); err != nil {
+				t.Fatal(err)
+			}
+			a.Close()
+
+			u, err := NewUpdater(arc, Options{})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if err := u.Remove("dir"); err != nil {
+				t.Fatal(err)
+			}
+
+			if err := u.Remove("nonexistent"); !errors.Is(err, fs.ErrNotExist) {
+				t.Fatalf("expected fs.ErrNotExist, got %v", err)
+			}
+
+			u.Close()
+
+			list, err := List(context.Background(), arc, Options{})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if len(list) != 1 || list[0].Name != "file1.txt" {
+				t.Fatalf("expected only file1.txt, got %+v", list)
+			}
+
+			fsys, err := OpenFS(arc, Options{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer fsys.Close()
+
+			f, err := fsys.Open("file1.txt")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer f.Close()
+
+			content, err := io.ReadAll(f)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(content) != "data1" {
+				t.Fatalf("expected file1.txt to contain 'data1', got %q", string(content))
+			}
+		})
+	}
+}
+func TestTarUpdater_Remove_FailedRewrite(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("skipping test as root (permissions are not enforced)")
+	}
+
+	tmp := t.TempDir()
+	arcDir := filepath.Join(tmp, "arc")
+	if err := os.MkdirAll(arcDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	src := filepath.Join(tmp, "src")
+	if err := os.MkdirAll(src, 0755); err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(filepath.Join(src, "file1.txt"), []byte("data1"), 0644)
+	os.WriteFile(filepath.Join(src, "file2.txt"), []byte("data2"), 0644)
+
+	files := map[string]os.FileInfo{}
+	for _, p := range []string{"file1.txt", "file2.txt"} {
+		full := filepath.Join(src, p)
+		info, err := os.Stat(full)
+		if err != nil {
+			t.Fatal(err)
+		}
+		files[full] = info
+	}
+
+	arc := filepath.Join(arcDir, "test.tar.zst")
+	a, err := NewArchiver(arc, src, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := u.Remove("test"); err == nil || !strings.Contains(err.Error(), "not supported natively") {
-		t.Errorf("expected unsupported removal error, got %v", err)
+	if err := a.Archive(context.Background(), files); err != nil {
+		t.Fatal(err)
 	}
-	u.Close()
+	a.Close()
+
+	origBytes, err := os.ReadFile(arc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	u, err := NewUpdater(arc, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer u.Close()
+
+	if err := os.Chmod(arcDir, 0555); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(arcDir, 0755)
+
+	testProbe := filepath.Join(arcDir, "probe.tmp")
+	if probeFile, probeErr := os.Create(testProbe); probeErr == nil {
+		probeFile.Close()
+		os.Remove(testProbe)
+		t.Skip("skipping test: read-only directory permissions not enforced")
+	}
+
+	err = u.Remove("file2.txt")
+	if err == nil {
+		t.Fatal("expected Remove to fail on read-only directory")
+	}
+
+	_ = os.Chmod(arcDir, 0755)
+
+	tempName := arc + ".tmp"
+	if _, err := os.Stat(tempName); !os.IsNotExist(err) {
+		t.Fatalf("expected temp file %s to not exist, got err: %v", tempName, err)
+	}
+
+	currentBytes, err := os.ReadFile(arc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(origBytes, currentBytes) {
+		t.Fatal("original archive bytes were modified on failed remove")
+	}
+
+	list, err := List(context.Background(), arc, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 2 {
+		t.Fatalf("expected both entries to still be listed, got %d entries: %+v", len(list), list)
+	}
+}
+func TestTarUpdater_Remove_UnsupportedWrapper(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		want string
+	}{
+		{"test.tar.lzma", ".lzma"},
+		{"test.tar.bz2", ".bz2"},
+		{"test.tbz2", ".tbz2"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tmp := t.TempDir()
+			src := filepath.Join(tmp, "src")
+			if err := os.MkdirAll(src, 0755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(src, "file.txt"), []byte("data"), 0644); err != nil {
+				t.Fatal(err)
+			}
+
+			info, err := os.Stat(filepath.Join(src, "file.txt"))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			arc := filepath.Join(tmp, tc.name)
+			a, err := NewTarArchiver(arc, src, Options{Method: "store"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := a.Archive(context.Background(), map[string]os.FileInfo{filepath.Join(src, "file.txt"): info}); err != nil {
+				t.Fatal(err)
+			}
+			if err := a.Close(); err != nil {
+				t.Fatal(err)
+			}
+
+			origBytes, err := os.ReadFile(arc)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			u, err := NewUpdater(arc, Options{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer u.Close()
+
+			err = u.Remove("file.txt")
+			if err == nil {
+				t.Fatal("expected error from Remove on unsupported wrapper, got nil")
+			}
+			if !strings.Contains(err.Error(), "removal is not supported for "+tc.want) {
+				t.Fatalf("expected error mentioning unsupported removal for %s, got: %v", tc.want, err)
+			}
+
+			currentBytes, err := os.ReadFile(arc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(origBytes, currentBytes) {
+				t.Fatal("original archive bytes were modified on unsupported wrapper removal")
+			}
+		})
+	}
 }
 func TestFallbackFS_Invalid(t *testing.T) {
 	// Проверка на передачу пустого имени файла в идентификатор форматов
